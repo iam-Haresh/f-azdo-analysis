@@ -517,7 +517,9 @@ class Normalizer:
         return env
 
     def _tfvc_repo(self, source: str, project: str) -> Repo:
+        changesets = self.cache.get_list_item(source, project, "repo_commits", "tfvc")
         return Repo(
+            last_commit=as_str(dig(changesets, 0, "createdDate")),
             id=make_id(source, project, "repo", "tfvc"),
             source=source,
             project=project,

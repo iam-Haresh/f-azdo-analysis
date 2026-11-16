@@ -346,6 +346,18 @@ def collect_repo_scans(ctx: CollectContext, project: str, rules: RuleSet, files:
 
     if tfvc and scan.tfvc.enabled:
         with ctx.guard(project, "tfvc_scan"):
+            # Newest changeset under the project root: the TFVC counterpart of "last commit".
+            ctx.cached_list(
+                project,
+                "repo_commits",
+                lambda: ctx.client.get_list(
+                    f"{p}/_apis/tfvc/changesets",
+                    {"searchCriteria.itemPath": f"$/{project}", "$top": 1, "$orderby": "id desc"},
+                    max_items=1,
+                ),
+                "tfvc",
+            )
+        with ctx.guard(project, "tfvc_scan"):
 
             def tfvc_tree() -> dict[str, Any]:
                 items = ctx.client.get_list(f"{p}/_apis/tfvc/items", {"scopePath": f"$/{project}", "recursionLevel": "Full"})

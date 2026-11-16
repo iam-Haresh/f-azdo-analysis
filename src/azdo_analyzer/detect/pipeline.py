@@ -87,6 +87,17 @@ def _clean_path(value: str, is_dir: bool = False) -> str:
     return cleaned.strip("/")
 
 
+def tfvc_scope(server_path: str, project: str) -> str | None:
+    """TFVC server path -> path below ``$/<project>`` ('' = whole project, None = another project)."""
+    cleaned = server_path.strip().strip("'\"").replace("\\", "/").rstrip("/")
+    root = f"$/{project}".lower()
+    if cleaned.lower() == root:
+        return ""
+    if cleaned.lower().startswith(root + "/"):
+        return cleaned[len(root) + 1 :]
+    return None
+
+
 def path_hints(pipeline: BuildPipeline, rules: RuleSet) -> list[str]:
     wanted = {name.lower() for name in rules.pipeline.path_inputs}
     hints: set[str] = set()
@@ -95,6 +106,9 @@ def path_hints(pipeline: BuildPipeline, rules: RuleSet) -> list[str]:
             if name.lower() in wanted:
                 is_dir = any(word in name.lower() for word in ("dir", "cwd", "context", "folder"))
                 for part in re.split(r"[\n;]", value):
+                    if part.strip().strip("'\"").startswith("$/"):  # TFVC server path
+                        scoped = tfvc_scope(part, pipeline.repo_project or pipeline.project)
+                        part = scoped or ""
                     hint = _clean_path(part, is_dir)
                     if hint:
                         hints.add(hint)
@@ -112,12 +126,45 @@ def _related(component_path: str, hint: str) -> bool:
     return path == hint or path.startswith(hint + "/") or hint.startswith(path + "/") if path else True
 
 
+def _in_scope(component_path: str, root: str) -> bool:
+    """Component lies under a mapped folder (or the mapping points inside the component)."""
+    if not root:
+        return True
+    return component_path != "." and _related(component_path, root)
+
+
+def _under(component_path: str, root: str) -> bool:
+    return not root or component_path == root or component_path.startswith(root + "/")
+
+
+def _workspace(pipeline: BuildPipeline) -> tuple[list[str], list[str]]:
+    """(mapped, cloaked) folders below the project root, from ``mappingType:serverPath`` entries."""
+    maps: list[str] = []
+    cloaks: list[str] = []
+    for entry in pipeline.tfvc_mappings:
+        kind, _, server_path = entry.partition(":")
+        scope = tfvc_scope(server_path, pipeline.repo_project or pipeline.project)
+        if scope is not None:
+            (cloaks if kind.lower() == "cloak" else maps).append(scope)
+    return maps, cloaks
+
+
 def link_components(pipeline: BuildPipeline, repo: Repo | None, rules: RuleSet) -> list[Component]:
     """Components a build pipeline works on: narrowed by path hints, then by pipeline evidence."""
     if repo is None or not repo.components:
         return []
     components = list(repo.components)
     hints = path_hints(pipeline, rules)
+    if pipeline.tfvc_mappings:
+        # The workspace mapping on the definition says which part of $/<project> is built.
+        maps, cloaks = _workspace(pipeline)
+        components = [c for c in components if any(_in_scope(c.path, m) for m in maps) and not any(_under(c.path, k) for k in cloaks)]
+        if not components:
+            if "tfvc_mapping_unmatched" not in pipeline.flags:
+                pipeline.flags.append("tfvc_mapping_unmatched")
+            return []
+        # Relative task inputs are relative to the workspace root, i.e. to a mapped folder.
+        hints = sorted({*hints, *[f"{m}/{h}" for m in maps if m for h in hints]})
     if hints:
         narrowed = [c for c in components if c.path != "." and any(_related(c.path, h) for h in hints)]
         if narrowed:

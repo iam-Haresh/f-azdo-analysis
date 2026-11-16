@@ -9,6 +9,9 @@ from typing import Any
 
 import pytest
 
+from azdo_analyzer.config import Config
+from azdo_analyzer.detect.pipeline import link_components
+from azdo_analyzer.detect.rules import load_rules
 from azdo_analyzer.model.entities import BuildPipeline, Estate, ReleasePipeline, iter_steps, pipeline_steps
 from azdo_analyzer.parse.yaml_loader import RepoRef, TemplateResolver, load_yaml
 
@@ -154,7 +157,30 @@ def test_legacy_flat_step_list_and_tfvc(estate: Estate) -> None:
     assert tfvc.triggers[0].type == "gated"
     repo = next(r for r in estate.repos if r.id == tfvc.repo_id)
     assert repo.type == "tfvc" and repo.scan_status == "scanned"
-    assert [c.path for c in repo.components] == ["Main/App"]  # the 8-level-deep project is beyond tfvc.max_depth
+    # the 8-level-deep project is beyond tfvc.max_depth
+    assert sorted(c.path for c in repo.components) == ["Dev/App", "Main/App", "Main/Tools"]
+    assert repo.last_commit  # date of the newest changeset
+    # workspace mapping $/Beta/Main drops the Dev branch; the solution path narrows to Main/App
+    assert tfvc.component_ids == [f"{repo.id}#dotnet:Main/App"]
+    assert tfvc.stack == ["csharp/aspnet-mvc/msbuild"]
+
+
+def test_tfvc_workspace_mapping_scopes_components(estate: Estate, config: Config) -> None:
+    rules = load_rules(config)
+    tfvc = build(estate, "tfvc-build").model_copy(deep=True)
+    repo = next(r for r in estate.repos if r.id == tfvc.repo_id)
+    tfvc.stages = []  # no task inputs: only the mapping decides
+
+    def linked(*mappings: str) -> list[str]:
+        tfvc.tfvc_mappings, tfvc.flags = list(mappings), []
+        return sorted(c.path for c in link_components(tfvc, repo, rules))
+
+    assert linked("map:$/Beta/Main") == ["Main/App", "Main/Tools"]
+    assert linked("map:$/Beta/Main", "cloak:$/Beta/Main/Tools") == ["Main/App"]
+    assert linked("map:$/Beta") == ["Dev/App", "Main/App", "Main/Tools"]
+    assert linked("map:$/Beta/Main/App/src") == ["Main/App"]  # mapping points inside a component
+    assert linked("map:$/Other/Main") == [] and tfvc.flags == ["tfvc_mapping_unmatched"]
+    assert linked("map:$/Beta/NotScanned") == [] and tfvc.flags == ["tfvc_mapping_unmatched"]
 
 
 def test_yaml_loader_keeps_duplicate_expression_keys() -> None:

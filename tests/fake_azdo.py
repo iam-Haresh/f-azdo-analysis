@@ -1030,6 +1030,10 @@ class FakeAzdo:
             return self._list([])
         if rest.startswith("distributedtask/environments/"):
             return self._json({"id": 7, "name": "web-prod", "resources": [{"id": 1, "name": "web-ns", "type": "kubernetes"}]})
+        if rest == "tfvc/changesets":
+            if project != "Beta":
+                return self._list([])
+            return self._list([{"changesetId": 4711, "createdDate": ago(40), "author": {"displayName": "Jane Dev"}, "comment": "fix"}])
         if rest == "tfvc/items":
             if project != "Beta":
                 return self._list([])
@@ -1043,6 +1047,8 @@ class FakeAzdo:
                     {"path": "$/Beta/Main/App", "isFolder": True},
                     {"path": "$/Beta/Main/App/App.sln"},
                     {"path": "$/Beta/Main/App/App.csproj"},
+                    {"path": "$/Beta/Main/Tools/Tool.csproj"},
+                    {"path": "$/Beta/Dev/App/App.csproj"},
                     {"path": "$/Beta/Main/a/b/c/d/e/f/g/too-deep.csproj"},
                 ]
             )

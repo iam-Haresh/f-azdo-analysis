@@ -58,6 +58,13 @@ Things most likely to differ:
   step's condition. Template parameters are substituted where the value is known. The preview API (a POST) is never used.
 - **Status precedence** for the single `status` column: disabled, orphaned, never_run, stale, failing, active, dormant.
   `all_statuses` keeps every match (for example `active; failing`).
+- **TFVC pipelines are scoped by their workspace mapping.** Components outside the mapped folders (or under a
+  cloaked one) are not linked; `$/...` paths and workspace-relative paths in task inputs narrow further. A mapping that
+  matches nothing scanned (another project, or deeper than `repo_scan.tfvc.max_depth`) links no components, sets the
+  flag `tfvc_mapping_unmatched`, and the stack falls back to pipeline evidence.
+- **TFVC "last commit"** is the date of the newest changeset under `$/<project>` (`tfvc/changesets`, `$top=1`).
+- **TFVC gaps still open:** branches are not distinguished (the same code under `Main` and `Dev` gives two components),
+  TFVC release artifacts are not linked to the repo, and the tree is one recursive listing per project.
 - **Service connections are matched** by GUID or exact name in step inputs. Names shorter than three characters are ignored.
 - **Template "coverage"** is an approximation: a matched template is assumed to cover the tasks that produce the facts it
   matches on, plus `clustering.ignore_tasks`. Everything else is listed as uncovered.
