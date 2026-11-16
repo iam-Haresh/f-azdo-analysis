@@ -1,0 +1,41 @@
+# Azure DevOps concept -> GitLab CI/CD concept (spec section 13.1).
+# `when` names a pipeline feature (see analyze/features.py); the row is shown in a pipeline
+# brief only when that feature is present. Rows without `when` appear in the catalogue only.
+
+concepts:
+  - { azdo: "Stage / job / step", gitlab: "stages / job / script lines" }
+  - { azdo: "Classic phase with demands; agent pool", gitlab: "Job with runner tags", when: demands }
+  - { azdo: "vmImage (hosted)", gitlab: "image: on a Linux runner; Windows/macOS need matching runners", when: vm_image }
+  - { azdo: "container: job, services:", gitlab: "image:, services:", when: container_job }
+  - { azdo: "Task group; YAML template; extends", gitlab: "include: (project/local/component), extends, CI/CD components", when: task_group }
+  - { azdo: "YAML template; extends", gitlab: "include: (project/local/component), extends, CI/CD components", when: yaml_template }
+  - { azdo: "resources.repositories templates", gitlab: "include:project with pinned ref", when: resource_repos }
+  - { azdo: "Variables; variable groups", gitlab: "CI/CD variables at project/group level (masked, protected), environment-scoped", when: variable_group }
+  - { azdo: "Key Vault-linked variable group; AzureKeyVault task", gitlab: "External secrets (secrets: with Vault / Azure Key Vault / AWS Secrets Manager) or ID-token-based fetch", when: key_vault }
+  - { azdo: "Secure files", gitlab: "Project-level Secure Files or file-type variables", when: secure_file }
+  - { azdo: "Service connection (cloud)", gitlab: "OIDC with id_tokens: where possible, else masked variables", when: service_connection }
+  - { azdo: "Service connection (Kubernetes)", gitlab: "GitLab agent for Kubernetes or kubeconfig variable", when: k8s_connection }
+  - { azdo: "CI trigger branch filters", gitlab: "workflow:rules, rules:if on $CI_COMMIT_BRANCH", when: ci_trigger }
+  - { azdo: "Path filters", gitlab: "rules:changes", when: path_filters }
+  - { azdo: "PR trigger; build-validation branch policy", gitlab: "Merge request pipelines + 'Pipelines must succeed'", when: pr_trigger }
+  - { azdo: "Scheduled trigger", gitlab: "Pipeline schedules", when: schedule }
+  - { azdo: "Build-completion trigger; pipeline resource", gitlab: "Multi-project pipeline (trigger:project), needs:project", when: build_completion }
+  - { azdo: "dependsOn, stage conditions", gitlab: "needs, rules", when: depends_on }
+  - { azdo: "condition, continueOnError, timeoutInMinutes, retry", gitlab: "rules/when, allow_failure, timeout, retry", when: conditions }
+  - { azdo: "Multi-config / matrix", gitlab: "parallel:matrix", when: matrix }
+  - { azdo: "Batch CI / auto-cancel", gitlab: "interruptible + auto-cancel redundant pipelines", when: batch }
+  - { azdo: "Publish/download build artifacts", gitlab: "artifacts:paths, needs:artifacts, expire_in", when: artifacts }
+  - { azdo: "Azure Artifacts feed", gitlab: "Artifactory / Nexus / GitLab package registry (per config)", when: feed }
+  - { azdo: "PublishTestResults", gitlab: "artifacts:reports:junit (TRX must be converted)", when: test_results }
+  - { azdo: "PublishCodeCoverageResults", gitlab: "coverage: regex + artifacts:reports:coverage_report", when: coverage }
+  - { azdo: "Release stage / YAML environment", gitlab: "environment: with deployment_tier", when: release_stage }
+  - { azdo: "Pre-deployment approval; environment checks", gitlab: "Protected environments + deployment approvals; when: manual", when: approvals }
+  - { azdo: "Gates", gitlab: "Manual job, external status checks, or a scripted check job", when: gates }
+  - { azdo: "Deployment queue settings; exclusive lock", gitlab: "resource_group", when: parallelism }
+  - { azdo: "Deployment group (agents on target VMs)", gitlab: "No direct equivalent - runner on target with env tags, or WinRM/SSH/Ansible from a runner. Design decision.", when: deployment_group }
+  - { azdo: "Agentless: manual intervention / delay / REST call", gitlab: "when: manual / when: delayed + start_in / curl job", when: agentless }
+  - { azdo: "Release variables scoped to stage", gitlab: "Environment-scoped CI/CD variables", when: stage_variables }
+  - { azdo: "Service hooks", gitlab: "Webhooks / integrations" }
+  - { azdo: "Retention policy", gitlab: "artifacts:expire_in, pipeline/artifact retention settings", when: retention }
+  - { azdo: "TFVC source", gitlab: "No equivalent: convert the TFVC path to Git first (git-tfs / import), then build from Git", when: tfvc }
+  - { azdo: "Config transformation (FileTransform, XML/JSON substitution, replacetokens)", gitlab: "Explicit step: envsubst / yq / jq / xmlstarlet with environment-scoped variables", when: config_transform }

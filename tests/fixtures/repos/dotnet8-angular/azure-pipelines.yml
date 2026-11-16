@@ -1,0 +1,93 @@
+trigger:
+  batch: true
+  branches:
+    include: [main, release/*]
+  paths:
+    include: [src/*, web/*]
+    exclude: [docs/*]
+
+schedules:
+  - cron: "0 2 * * 1-5"
+    displayName: Nightly
+    branches:
+      include: [main]
+    always: true
+
+resources:
+  repositories:
+    - repository: templates
+      type: git
+      name: Alpha/pipeline-templates
+      ref: refs/heads/main
+
+parameters:
+  - name: runTests
+    type: boolean
+    default: true
+
+variables:
+  - group: web-api-common
+  - name: buildConfiguration
+    value: Release
+  - ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    - name: imageTag
+      value: stable
+  - ${{ if ne(variables['Build.SourceBranchName'], 'main') }}:
+    - name: imageTag
+      value: preview
+
+stages:
+  - stage: Build
+    jobs:
+      - job: api
+        pool: Linux-Pool
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: 8.0.x
+          - template: steps/dotnet-build.yml@templates
+            parameters:
+              project: src/Api/Api.csproj
+              configuration: $(buildConfiguration)
+          - ${{ if eq(parameters.runTests, true) }}:
+            - task: DotNetCoreCLI@2
+              displayName: Test
+              inputs:
+                command: test
+                projects: src/Api.Tests/Api.Tests.csproj
+          - ${{ if eq(parameters.runTests, true) }}:
+            - task: PublishTestResults@2
+              inputs:
+                testResultsFormat: VSTest
+          - task: Docker@2
+            inputs:
+              command: buildAndPush
+              containerRegistry: acr-prod
+              repository: web-api
+      - template: jobs/angular.yml@templates
+        parameters:
+          workingDirectory: web
+  - stage: Deploy_Prod
+    displayName: Prod
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: deploy
+        environment: web-prod.web-ns
+        pool: Linux-Pool
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: HelmDeploy@0
+                  inputs:
+                    connectionType: Kubernetes Service Connection
+                    kubernetesServiceConnection: aks-prod
+                    namespace: web
+                    command: upgrade
+                    chartType: FilePath
+                    chartPath: charts/web-api
+                    releaseName: web-api
+                - script: |
+                    curl -u deploy:password=Sup3rS3cretValue https://hooks.example.com/notify
+                  displayName: Notify

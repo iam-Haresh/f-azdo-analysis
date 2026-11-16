@@ -1,0 +1,4 @@
+{
+  // comment allowed here
+  "compilerOptions": { "strict": true, },
+}

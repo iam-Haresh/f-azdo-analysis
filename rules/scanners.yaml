@@ -1,0 +1,67 @@
+# Security scanners in pipelines (spec section 13.6) and what they cover in the GitLab baseline.
+
+scanners:
+  - name: SonarQube
+    tasks: ['re:(?i)^Sonar(Qube|Cloud)']
+    script_regex: ['(?i)sonar-scanner', '(?i)sonar:sonar', '(?i)dotnet[- ]sonarscanner']
+    covers: [sast]
+    gitlab_equivalent: SAST (or keep SonarQube through a sonar-scanner job)
+  - name: Mend (WhiteSource)
+    tasks: ['re:(?i)whitesource|^mend']
+    script_regex: ['(?i)wss-unified-agent']
+    covers: [dependency_scanning]
+    gitlab_equivalent: Dependency Scanning
+  - name: Checkmarx
+    tasks: ['re:(?i)checkmarx|^CxSAST|^Application security testing']
+    script_regex: ['(?i)\bcx\s+scan\b', '(?i)runCxConsole']
+    covers: [sast]
+    gitlab_equivalent: SAST
+  - name: Fortify
+    tasks: ['re:(?i)fortify']
+    script_regex: ['(?i)\bsourceanalyzer\b', '(?i)\bscancentral\b']
+    covers: [sast]
+    gitlab_equivalent: SAST
+  - name: Veracode
+    tasks: ['re:(?i)veracode']
+    script_regex: ['(?i)veracode']
+    covers: [sast]
+    gitlab_equivalent: SAST
+  - name: Snyk
+    tasks: ['re:(?i)snyk']
+    script_regex: ['(?m)(^|[\s;&|])snyk\s+(test|monitor|container|code)\b']
+    covers: [dependency_scanning]
+    gitlab_equivalent: Dependency Scanning
+  - name: Black Duck
+    tasks: ['re:(?i)black.?duck|synopsys.?detect']
+    script_regex: ['(?i)detect\.sh', '(?i)synopsys-detect']
+    covers: [dependency_scanning]
+    gitlab_equivalent: Dependency Scanning
+  - name: OWASP Dependency-Check
+    tasks: ['re:(?i)dependency-?check']
+    script_regex: ['(?i)dependency-check']
+    covers: [dependency_scanning]
+    gitlab_equivalent: Dependency Scanning
+  - name: OWASP ZAP
+    tasks: ['re:(?i)owasp.?zap|^zap']
+    script_regex: ['(?i)zap-(baseline|full-scan|api-scan)', '(?i)\bzap\.sh\b']
+    covers: [dast]
+    gitlab_equivalent: DAST
+  - name: Trivy
+    tasks: ['re:(?i)trivy']
+    script_regex: ['(?m)(^|[\s;&|])trivy\s+(image|fs|config|repo)\b']
+    covers: [container_scanning]
+    gitlab_equivalent: Container Scanning (and IaC Scanning for `trivy config`)
+  - name: CredScan
+    tasks: ['re:(?i)credscan|^MicrosoftSecurityDevOps']
+    covers: [secret_detection]
+    gitlab_equivalent: Secret Detection
+  - name: gitleaks
+    tasks: ['re:(?i)gitleaks']
+    script_regex: ['(?i)\bgitleaks\s+(detect|protect)\b']
+    covers: [secret_detection]
+    gitlab_equivalent: Secret Detection
+
+# Baseline items that only apply when the pipeline shows this kind of evidence.
+baseline_requires:
+  container_scanning: container
+  iac_scanning: iac

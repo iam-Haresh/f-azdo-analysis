@@ -1,0 +1,40 @@
+# Runner and image requirements (spec section 13.3).
+
+runner:
+  windows_demands:
+    - 're:(?i)^(msbuild|visualstudio|vstest|DotNetFramework|sqlpackage|Cmd|WindowsKit|AzurePS|WindowsSdk)'
+    - 're:(?i)Agent\.OS\s+-equals\s+Windows'
+  macos_demands:
+    - 're:(?i)^xcode'
+    - 're:(?i)Agent\.OS\s+-equals\s+Darwin'
+  linux_demands:
+    - 're:(?i)Agent\.OS\s+-equals\s+Linux'
+  windows_vm_images: ['re:(?i)^(windows|vs20|win1)']
+  macos_vm_images: ['re:(?i)^mac']
+  windows_runtime_families: [netframework, msvc]
+
+  # Agent capabilities worth summarising when planning equivalent runners.
+  capability_keys:
+    - 're:(?i)^Agent\.(OS|OSVersion|OSArchitecture|Version)$'
+    - 're:(?i)^(VisualStudio|MSBuild|VSTest|DotNetFramework|dotnet|java|JDK|JAVA_HOME|maven|M2_HOME|gradle|ant|node|npm|python|docker|Xcode|AndroidSDK|ANDROID_HOME|SqlPackage|AzurePS|kubectl|helm|terraform|go|ruby)'
+
+  default_image: "alpine:3.20"
+
+  # First match wins. Keys: build_tool, language, runtime_family, framework, package_manager, group.
+  images:
+    - { match: { build_tool: maven }, image: "maven:3.9-eclipse-temurin-{version}", default_version: "17", version_pattern: '(\d+(?:\.\d+)?)', version_map: { "1.8": "8", "1.7": "8", "1.11": "11", "1.17": "17", "1.21": "21" }, tools: [maven, jdk] }
+    - { match: { build_tool: gradle, runtime_family: jvm }, image: "gradle:8-jdk{version}", default_version: "17", version_map: { "1.8": "8", "1_8": "8", "1.11": "11", "1.17": "17" }, tools: [gradle, jdk] }
+    - { match: { build_tool: ant }, image: "eclipse-temurin:{version}-jdk", default_version: "17", version_map: { "1.8": "8" }, tools: [ant, jdk] }
+    - { match: { runtime_family: dotnet }, image: "mcr.microsoft.com/dotnet/sdk:{version}", default_version: "8.0", tools: [dotnet-sdk] }
+    - { match: { runtime_family: node }, image: "node:{version}", default_version: "20", version_pattern: '(\d+)', tools: [node, npm] }
+    - { match: { runtime_family: python }, image: "python:{version}", default_version: "3.12", tools: [python, pip] }
+    - { match: { runtime_family: go }, image: "golang:{version}", default_version: "1.22", tools: [go] }
+    - { match: { language: rust }, image: "rust:{version}", default_version: "1", tools: [cargo] }
+    - { match: { language: php }, image: "composer:2", tools: [php, composer] }
+    - { match: { language: ruby }, image: "ruby:{version}", default_version: "3.3", tools: [ruby, bundler] }
+    - { match: { build_tool: flutter }, image: "ghcr.io/cirruslabs/flutter:stable", tools: [flutter] }
+    - { match: { runtime_family: android }, image: "eclipse-temurin:17-jdk", tools: [jdk, android-sdk] }
+    - { match: { build_tool: cmake }, image: "gcc:13", tools: [gcc, cmake] }
+    - { match: { build_tool: terraform }, image: "hashicorp/terraform:{version}", default_version: "1.9", tools: [terraform] }
+    - { match: { build_tool: helm }, image: "alpine/helm:3", tools: [helm] }
+    - { match: { build_tool: docker }, image: "docker:27", tools: [docker] }

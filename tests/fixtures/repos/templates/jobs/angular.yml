@@ -1,0 +1,17 @@
+parameters:
+  workingDirectory: '.'
+jobs:
+  - job: ui
+    pool:
+      name: Linux-Pool
+      demands:
+        - npm
+    steps:
+      - task: NodeTool@0
+        inputs:
+          versionSpec: 20.x
+      - script: |
+          npm ci
+          npm run build
+        workingDirectory: ${{ parameters.workingDirectory }}
+        displayName: Build UI

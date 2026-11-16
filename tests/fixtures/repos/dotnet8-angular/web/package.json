@@ -1,0 +1,8 @@
+{
+  "name": "web-ui",
+  "version": "1.0.0",
+  "scripts": { "build": "ng build", "test": "ng test --watch=false", "lint": "ng lint" },
+  "engines": { "node": ">=18.13" },
+  "dependencies": { "@angular/core": "^17.3.0", "rxjs": "~7.8.0" },
+  "devDependencies": { "@angular/cli": "^17.3.0", "karma": "~6.4.0", "jasmine-core": "~5.1.0", "typescript": "~5.4.2" }
+}

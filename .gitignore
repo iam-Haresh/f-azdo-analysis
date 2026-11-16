@@ -1,0 +1,14 @@
+# Sensitive: raw AZDO payloads (identities, URLs, variable values) and generated reports
+.cache/
+out/
+config.yaml
+config.local.yaml
+
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/

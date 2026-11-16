@@ -1,0 +1,10 @@
+parameters:
+  project: ''
+steps:
+  - task: DotNetCoreCLI@2
+    displayName: Publish
+    inputs:
+      command: publish
+      projects: ${{ parameters.project }}
+  - publish: $(Build.ArtifactStagingDirectory)
+    artifact: drop

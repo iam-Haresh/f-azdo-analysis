@@ -1,0 +1,456 @@
+# Repository evidence: Go, Rust, PHP, Ruby, C/C++, mobile, containers, Kubernetes/OpenShift,
+# IaC, database migrations, quality/security tooling, other CI systems, Git features.
+
+app_groups: [go, rust, php, ruby, cpp, android, ios, flutter]
+
+flag_groups:
+  has_dockerfile: [container]
+  has_helm: [helm]
+  has_kubernetes: [k8s, kustomize, openshift, helm]
+  has_openshift: [openshift]
+  has_iac: [terraform, bicep, arm, pulumi, ansible, serverless, sam, cdk]
+
+repo:
+  # -- Go / Rust / PHP / Ruby ------------------------------------------------------
+  - id: go-mod
+    files: ["**/go.mod"]
+    parser: regex
+    group: go
+    emit:
+      language: go
+      runtime_family: go
+      build_tool: go
+      runtime_version: { regex: '(?m)^go\s+(\d[\d.]*)' }
+      framework:
+        regex: 'github\.com/(gin-gonic/gin|labstack/echo|gofiber/fiber|go-chi/chi|gorilla/mux)'
+        map: { gin: gin, echo: echo, fiber: fiber, chi: chi, mux: gorilla-mux }
+    confidence: 0.9
+
+  - id: rust-cargo
+    files: ["**/Cargo.toml"]
+    parser: toml
+    group: rust
+    emit:
+      language: rust
+      runtime_family: rust
+      build_tool: cargo
+      runtime_version: { jsonpath: "$.package.rust-version" }
+      edition: { jsonpath: "$.package.edition" }
+      framework: { regex: '(?m)^(actix-web|axum|rocket|warp|tokio)\s*=' }
+    confidence: 0.9
+
+  - id: php-composer
+    files: ["**/composer.json"]
+    parser: json
+    group: php
+    emit:
+      language: php
+      runtime_family: php
+      build_tool: composer
+      package_manager: composer
+      runtime_version: { jsonpath: "$.require.php" }
+    confidence: 0.9
+
+  - id: php-laravel
+    files: ["**/composer.json"]
+    parser: json
+    when: { jsonpath: "$.require['laravel/framework']" }
+    group: php
+    emit:
+      framework: laravel
+      framework_version: { jsonpath: "$.require['laravel/framework']" }
+    confidence: 0.95
+
+  - id: php-symfony
+    files: ["**/composer.json"]
+    parser: json
+    when: { jsonpath: "$.require['symfony/framework-bundle']" }
+    group: php
+    emit:
+      framework: symfony
+      framework_version: { jsonpath: "$.require['symfony/framework-bundle']" }
+    confidence: 0.95
+
+  - id: ruby-gemfile
+    files: ["**/Gemfile"]
+    parser: regex
+    group: ruby
+    emit:
+      language: ruby
+      runtime_family: ruby
+      package_manager: bundler
+      build_tool: bundler
+      runtime_version: { regex: '(?m)^ruby\s+[''"](\d[\d.]*)' }
+    confidence: 0.9
+
+  - id: ruby-rails
+    files: ["**/Gemfile"]
+    parser: regex
+    when: { regex: 'gem\s+[''"]rails[''"]' }
+    group: ruby
+    emit:
+      framework: rails
+      framework_version: { regex: 'gem\s+[''"]rails[''"]\s*,\s*[''"]([^''"]+)' }
+    confidence: 0.95
+
+  # -- C / C++ -------------------------------------------------------------------
+  - id: cpp-cmake
+    files: ["**/CMakeLists.txt"]
+    parser: regex
+    group: cpp
+    emit:
+      language: cpp
+      runtime_family: native
+      build_tool: cmake
+      build_tool_version: { regex: 'cmake_minimum_required\s*\(\s*VERSION\s+(\d[\d.]*)', ignore_case: true }
+    confidence: 0.85
+
+  - id: cpp-vcxproj
+    files: ["**/*.vcxproj"]
+    parser: xml
+    group: cpp
+    emit:
+      language: cpp
+      runtime_family: msvc
+      build_tool: msbuild
+      platform_toolset: { xpath: "//PlatformToolset" }
+    flags: [requires_windows]
+    confidence: 0.9
+
+  - id: cpp-conan
+    files: ["**/conanfile.txt", "**/conanfile.py"]
+    parser: filename
+    group: cpp
+    emit: { package_manager: conan }
+    confidence: 0.85
+
+  - id: cpp-vcpkg
+    files: ["**/vcpkg.json"]
+    parser: filename
+    group: cpp
+    emit: { package_manager: vcpkg }
+    confidence: 0.85
+
+  - id: makefile
+    files: ["**/Makefile", "**/GNUmakefile"]
+    parser: filename
+    emit: { makefile: present }
+    confidence: 0.5
+
+  # -- Mobile --------------------------------------------------------------------
+  - id: android-gradle
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' }
+    group: android
+    emit:
+      language: java
+      runtime_family: android
+      framework: android
+      build_tool: gradle
+      compile_sdk: { regex: 'compileSdk(?:Version)?\s*=?\s*\(?(\d+)' }
+      min_sdk: { regex: 'minSdk(?:Version)?\s*=?\s*\(?(\d+)' }
+      target_sdk: { regex: 'targetSdk(?:Version)?\s*=?\s*\(?(\d+)' }
+    confidence: 0.9
+
+  - id: android-kotlin
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when:
+      all:
+        - { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' }
+        - { regex: 'kotlin-android|org\.jetbrains\.kotlin\.android|kotlin\("android"\)' }
+    group: android
+    emit: { language: kotlin }
+    confidence: 0.95
+
+  - id: android-manifest
+    files: ["**/AndroidManifest.xml"]
+    parser: filename
+    emit: { android_manifest: present }
+    confidence: 0.8
+
+  - id: ios-xcodeproj
+    files: ["**/*.xcodeproj/project.pbxproj"]
+    parser: filename
+    group: ios
+    dir_up: 1
+    emit: { language: swift/objective-c, runtime_family: ios, framework: ios, build_tool: xcode }
+    flags: [requires_macos]
+    confidence: 0.9
+
+  - id: ios-podfile
+    files: ["**/Podfile"]
+    parser: filename
+    group: ios
+    emit: { package_manager: cocoapods, runtime_family: ios, build_tool: xcode }
+    flags: [requires_macos]
+    confidence: 0.85
+
+  - id: flutter-pubspec
+    files: ["**/pubspec.yaml"]
+    parser: yaml
+    group: flutter
+    emit:
+      language: dart
+      runtime_family: dart
+      build_tool: flutter
+      package_manager: pub
+      runtime_version: { jsonpath: "$.environment.sdk" }
+      framework: { jsonpath: "$.dependencies.flutter", map: { '.': flutter } }
+    confidence: 0.9
+
+  # -- Containers ----------------------------------------------------------------
+  - id: dockerfile
+    files: ["**/Dockerfile", "**/Dockerfile.*", "**/*.Dockerfile", "**/Containerfile"]
+    parser: regex
+    group: container
+    emit:
+      build_tool: docker
+      base_images: { regex: '(?im)^\s*FROM\s+(?:--platform=\S+\s+)?(\S+)' }
+      build_stages: { regex: '(?im)^\s*FROM\s+(?:--platform=\S+\s+)?\S+\s+AS\s+(\S+)' }
+      exposed_ports: { regex: '(?im)^\s*EXPOSE\s+(.+)$' }
+    multi: [base_images, build_stages, exposed_ports]
+    confidence: 0.95
+
+  - id: docker-compose
+    files: ["**/docker-compose*.yml", "**/docker-compose*.yaml", "**/compose.yml", "**/compose.yaml"]
+    parser: filename
+    group: compose
+    emit: { build_tool: docker-compose }
+    confidence: 0.9
+
+  # -- Kubernetes / OpenShift ----------------------------------------------------
+  - id: helm-chart
+    files: ["**/Chart.yaml"]
+    parser: yaml
+    when: { jsonpath: "$.name" }
+    group: helm
+    emit:
+      build_tool: helm
+      artifact: { jsonpath: "$.name" }
+      chart_version: { jsonpath: "$.version" }
+      chart_api_version: { jsonpath: "$.apiVersion" }
+    confidence: 0.95
+
+  - id: kustomize
+    files: ["**/kustomization.yaml", "**/kustomization.yml"]
+    parser: filename
+    group: kustomize
+    emit: { build_tool: kustomize }
+    confidence: 0.95
+
+  - id: k8s-manifests
+    files:
+      - "**/k8s/**/*.yaml"
+      - "**/k8s/**/*.yml"
+      - "**/kubernetes/**/*.yaml"
+      - "**/kubernetes/**/*.yml"
+      - "**/manifests/**/*.yaml"
+      - "**/manifests/**/*.yml"
+      - "**/deploy/**/*.yaml"
+      - "**/deploy/**/*.yml"
+      - "**/deployment/**/*.yaml"
+      - "**/deployment/**/*.yml"
+      - "**/openshift/**/*.yaml"
+      - "**/openshift/**/*.yml"
+    parser: regex
+    when:
+      all:
+        - { regex: '(?m)^apiVersion:\s*\S+' }
+        - { regex: '(?m)^kind:\s*\S+' }
+        - { not: { regex: '(?m)^kind:\s*(Template|Route|DeploymentConfig|BuildConfig|ImageStream)\b|^apiVersion:\s*\S*openshift\.io' } }
+    group: k8s
+    emit:
+      build_tool: kubectl
+      kinds: { regex: '(?m)^kind:\s*(\S+)' }
+    multi: [kinds]
+    confidence: 0.85
+
+  - id: openshift-manifests
+    files:
+      - "**/k8s/**/*.yaml"
+      - "**/k8s/**/*.yml"
+      - "**/manifests/**/*.yaml"
+      - "**/manifests/**/*.yml"
+      - "**/deploy/**/*.yaml"
+      - "**/deploy/**/*.yml"
+      - "**/deployment/**/*.yaml"
+      - "**/deployment/**/*.yml"
+      - "**/openshift/**/*.yaml"
+      - "**/openshift/**/*.yml"
+      - "**/.openshift/**/*.yaml"
+      - "**/.openshift/**/*.yml"
+    parser: regex
+    when: { regex: '(?m)^kind:\s*(Template|Route|DeploymentConfig|BuildConfig|ImageStream)\b|^apiVersion:\s*\S*openshift\.io' }
+    group: openshift
+    emit:
+      build_tool: oc
+      platform: openshift
+      kinds: { regex: '(?m)^\s*kind:\s*(Template|Route|DeploymentConfig|BuildConfig|ImageStream)\b' }
+    multi: [kinds]
+    confidence: 0.9
+
+  # -- Infrastructure as code ----------------------------------------------------
+  - id: terraform
+    files: ["**/*.tf"]
+    parser: regex
+    group: terraform
+    emit:
+      build_tool: terraform
+      build_tool_version: { regex: 'required_version\s*=\s*"([^"]+)"' }
+      providers: { regex: '(?m)^\s*provider\s+"([^"]+)"' }
+      backend: { regex: '(?m)^\s*backend\s+"([^"]+)"' }
+    multi: [providers, backend]
+    confidence: 0.95
+
+  - id: bicep
+    files: ["**/*.bicep"]
+    parser: filename
+    group: bicep
+    emit: { build_tool: bicep }
+    confidence: 0.95
+
+  - id: arm-template
+    files: ["**/azuredeploy*.json", "**/*.template.json", "**/arm/**/*.json", "**/ARM/**/*.json"]
+    parser: json
+    when: { jsonpath: "$['$schema']", pattern: 'deploymentTemplate' }
+    group: arm
+    emit: { build_tool: arm-template }
+    confidence: 0.9
+
+  - id: pulumi
+    files: ["**/Pulumi.yaml"]
+    parser: yaml
+    group: pulumi
+    emit:
+      build_tool: pulumi
+      language: { jsonpath: "$.runtime" }
+    confidence: 0.95
+
+  - id: ansible-playbooks
+    files: ["**/site.yml", "**/site.yaml", "**/playbook*.yml", "**/playbook*.yaml", "**/playbooks/**/*.yml", "**/playbooks/**/*.yaml"]
+    parser: regex
+    when: { regex: '(?m)^\s*-?\s*hosts:\s*\S+' }
+    group: ansible
+    emit: { build_tool: ansible }
+    confidence: 0.85
+
+  - id: ansible-layout
+    files: ["**/ansible.cfg", "**/roles/*/tasks/main.yml", "**/roles/*/tasks/main.yaml"]
+    parser: filename
+    emit: { ansible: present }
+    confidence: 0.85
+
+  - id: serverless-framework
+    files: ["**/serverless.yml", "**/serverless.yaml"]
+    parser: filename
+    group: serverless
+    emit: { build_tool: serverless-framework }
+    confidence: 0.9
+
+  - id: aws-sam
+    files: ["**/template.yaml", "**/template.yml"]
+    parser: regex
+    when: { regex: 'AWS::Serverless' }
+    group: sam
+    emit: { build_tool: aws-sam }
+    confidence: 0.9
+
+  - id: aws-cdk
+    files: ["**/cdk.json"]
+    parser: filename
+    group: cdk
+    emit: { build_tool: aws-cdk }
+    confidence: 0.9
+
+  # -- Database migrations -------------------------------------------------------
+  - id: flyway-migrations
+    files: ["**/V*__*.sql", "**/flyway.conf", "**/flyway.toml"]
+    parser: filename
+    emit: { migration_tool: flyway }
+    confidence: 0.85
+
+  - id: liquibase-changelog
+    files: ["**/db.changelog*", "**/*changelog*.xml", "**/liquibase.properties"]
+    parser: filename
+    emit: { migration_tool: liquibase }
+    confidence: 0.8
+
+  # -- Quality / security tooling ------------------------------------------------
+  - id: sonar-properties
+    files: ["**/sonar-project.properties"]
+    parser: filename
+    emit: { scanner: SonarQube }
+    confidence: 0.9
+
+  - id: snyk-policy
+    files: ["**/.snyk"]
+    parser: filename
+    emit: { scanner: Snyk }
+    confidence: 0.9
+
+  - id: dependency-check-config
+    files: ["**/dependency-check*.xml", "**/dependency-check*.json", "**/.dependency-check*"]
+    parser: filename
+    emit: { scanner: OWASP Dependency-Check }
+    confidence: 0.8
+
+  - id: trivy-ignore
+    files: ["**/.trivyignore", "**/trivy.yaml"]
+    parser: filename
+    emit: { scanner: Trivy }
+    confidence: 0.9
+
+  - id: gitleaks-config
+    files: ["**/.gitleaks.toml", "**/.gitleaksignore"]
+    parser: filename
+    emit: { scanner: gitleaks }
+    confidence: 0.9
+
+  - id: mend-config
+    files: ["**/.whitesource", "**/whitesource.config", "**/wss-unified-agent.config"]
+    parser: filename
+    emit: { scanner: Mend (WhiteSource) }
+    confidence: 0.9
+
+  # -- Other CI systems ----------------------------------------------------------
+  - id: ci-jenkins
+    files: ["**/Jenkinsfile", "**/Jenkinsfile.*"]
+    parser: filename
+    emit: { other_ci: Jenkins }
+    confidence: 0.95
+
+  - id: ci-gitlab
+    files: [".gitlab-ci.yml"]
+    parser: filename
+    emit: { other_ci: GitLab CI }
+    confidence: 0.95
+
+  - id: ci-github-actions
+    files: [".github/workflows/*.yml", ".github/workflows/*.yaml"]
+    parser: filename
+    emit: { other_ci: GitHub Actions }
+    confidence: 0.95
+
+  - id: ci-bitbucket
+    files: ["bitbucket-pipelines.yml"]
+    parser: filename
+    emit: { other_ci: Bitbucket Pipelines }
+    confidence: 0.95
+
+  # -- Git features --------------------------------------------------------------
+  - id: git-submodules
+    files: [".gitmodules"]
+    parser: filename
+    emit: { git_submodules: present }
+    flags: [git_submodules]
+    confidence: 0.95
+
+  - id: git-lfs
+    files: ["**/.gitattributes"]
+    parser: regex
+    when: { regex: 'filter=lfs' }
+    emit: { git_lfs: present }
+    flags: [git_lfs]
+    confidence: 0.95

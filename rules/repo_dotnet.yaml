@@ -1,0 +1,308 @@
+# Repository evidence: .NET (SDK-style, legacy .NET Framework, special project types).
+# Rule schema: see src/azdo_analyzer/detect/rules.py (RepoRule). Override any rule by id
+# from a directory listed in detection.extra_rules_dirs.
+
+app_groups: [dotnet, dotnet-special]
+
+repo:
+  - id: dotnet-sdk-csproj
+    files: ["**/*.csproj", "**/*.vbproj", "**/*.fsproj"]
+    parser: xml
+    when: { xpath: "/Project[@Sdk]" }
+    group: dotnet
+    emit:
+      language: { from_extension: { csproj: csharp, vbproj: vbnet, fsproj: fsharp } }
+      runtime_family: dotnet
+      runtime_version: { xpath: "//TargetFramework|//TargetFrameworks" }
+      project_kind: { xpath: "/Project/@Sdk", pattern: 'Sdk\.(\w+)$' }
+      packaging: { xpath: "//OutputType" }
+      build_tool: dotnet-cli
+    confidence: 0.9
+
+  - id: dotnet-sdk-targets-netfx
+    # SDK-style project that only targets .NET Framework (net48, net472, net35 ...)
+    files: ["**/*.csproj", "**/*.vbproj", "**/*.fsproj"]
+    parser: xml
+    when: { xpath: "/Project[@Sdk]//TargetFramework[starts-with(., 'net4') or starts-with(., 'net3') or starts-with(., 'net2')]" }
+    group: dotnet
+    emit:
+      runtime_family: netframework
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-aspnetcore
+    files: ["**/*.csproj", "**/*.vbproj", "**/*.fsproj"]
+    parser: xml
+    when: { xpath: "/Project[contains(@Sdk, 'Sdk.Web')]" }
+    group: dotnet
+    emit: { framework: aspnetcore }
+    confidence: 0.9
+
+  - id: dotnet-blazor-wasm
+    files: ["**/*.csproj"]
+    parser: xml
+    when: { xpath: "/Project[contains(@Sdk, 'BlazorWebAssembly')]" }
+    group: dotnet
+    emit: { framework: blazor-webassembly }
+    confidence: 0.95
+
+  - id: dotnet-worker
+    files: ["**/*.csproj"]
+    parser: xml
+    when: { xpath: "/Project[contains(@Sdk, 'Sdk.Worker')]" }
+    group: dotnet
+    emit: { framework: worker-service }
+    confidence: 0.9
+
+  - id: dotnet-maui
+    files: ["**/*.csproj"]
+    parser: xml
+    when: { xpath: "//UseMaui[translate(., 'TRUE', 'true') = 'true']" }
+    group: dotnet
+    emit: { framework: maui }
+    confidence: 0.95
+
+  - id: dotnet-ios-target
+    files: ["**/*.csproj"]
+    parser: xml
+    when:
+      any:
+        - { xpath: "//TargetFrameworks[contains(., '-ios') or contains(., '-maccatalyst')]|//TargetFramework[contains(., '-ios')]" }
+        - { xpath: "//Reference[starts-with(@Include, 'Xamarin.iOS')]" }
+    group: dotnet
+    emit: { mobile_platform: ios }
+    flags: [requires_macos]
+    confidence: 0.9
+
+  - id: dotnet-xamarin
+    files: ["**/*.csproj"]
+    parser: xml
+    when: { xpath: "//Reference[starts-with(@Include, 'Mono.Android') or starts-with(@Include, 'Xamarin.iOS')]" }
+    group: dotnet
+    emit: { framework: xamarin }
+    confidence: 0.95
+
+  - id: dotnet-azure-functions
+    files: ["**/*.csproj"]
+    parser: xml
+    when: { xpath: "//AzureFunctionsVersion" }
+    group: dotnet
+    emit:
+      framework: azure-functions
+      functions_version: { xpath: "//AzureFunctionsVersion" }
+    confidence: 0.95
+
+  - id: dotnet-test-frameworks
+    files: ["**/*.csproj", "**/*.vbproj", "**/*.fsproj"]
+    parser: xml
+    group: dotnet
+    emit:
+      test_tooling:
+        xpath: "//PackageReference/@Include|//Reference/@Include"
+        map: { '^xunit': xunit, '^nunit': nunit, '^MSTest|Microsoft\.VisualStudio\.QualityTools\.UnitTestFramework|Microsoft\.VisualStudio\.TestPlatform\.TestFramework': mstest, '^coverlet': coverlet }
+    multi: [test_tooling]
+    confidence: 0.9
+
+  - id: dotnet-key-packages
+    files: ["**/*.csproj", "**/*.vbproj", "**/*.fsproj"]
+    parser: xml
+    group: dotnet
+    emit:
+      key_packages:
+        xpath: "//PackageReference/@Include"
+        map:
+          '^Microsoft\.EntityFrameworkCore': EF Core
+          '^EntityFramework$': Entity Framework 6
+          '^Dapper$': Dapper
+          '^MediatR': MediatR
+          '^Swashbuckle': Swagger
+          '^Grpc\.': gRPC
+          '^Serilog$': Serilog
+          '^MassTransit$': MassTransit
+          '^Microsoft\.Azure\.Functions|^Microsoft\.NET\.Sdk\.Functions': Azure Functions
+    multi: [key_packages]
+    confidence: 0.8
+
+  - id: dotnet-legacy-csproj
+    # Old-style project file: .NET Framework, needs MSBuild / Visual Studio on Windows
+    files: ["**/*.csproj", "**/*.vbproj", "**/*.fsproj"]
+    parser: xml
+    when: { xpath: "/Project[not(@Sdk)]//TargetFrameworkVersion" }
+    group: dotnet
+    emit:
+      language: { from_extension: { csproj: csharp, vbproj: vbnet, fsproj: fsharp } }
+      runtime_family: netframework
+      runtime_version: { xpath: "//TargetFrameworkVersion" }
+      packaging: { xpath: "//OutputType" }
+      build_tool: msbuild
+      project_kind:
+        xpath: "//ProjectTypeGuids"
+        map:
+          '349c5851-65df-11da-9384-00065b846f21': Web Application
+          '3D9AD99F-2412-4246-B90B-4EAA41C64699': WCF
+          '60dc8134-eba5-43b8-bcc9-bb4bc16c2548': WPF
+          '3AC096D0-A1C2-E12C-1390-A8335801FDAB': Test
+    flags: [requires_windows]
+    confidence: 0.9
+
+  - id: dotnet-legacy-frameworks
+    files: ["**/*.csproj", "**/*.vbproj"]
+    parser: xml
+    when: { xpath: "/Project[not(@Sdk)]" }
+    group: dotnet
+    emit:
+      framework:
+        xpath: "//Reference/@Include"
+        map:
+          '^System\.Web\.Mvc': aspnet-mvc
+          '^System\.Web\.Http': aspnet-webapi
+          '^System\.ServiceModel($|,)': wcf
+          '^System\.Windows\.Forms': winforms
+          '^PresentationFramework': wpf
+    confidence: 0.75
+
+  - id: dotnet-webforms
+    files: ["**/*.aspx"]
+    parser: filename
+    emit: { aspnet_webforms: present }
+    flags: [requires_windows]
+    confidence: 0.7
+
+  - id: dotnet-packages-config
+    files: ["**/packages.config"]
+    parser: xml
+    when: { xpath: "/packages/package" }
+    group: dotnet
+    emit:
+      package_manager: nuget (packages.config)
+      test_tooling:
+        xpath: "/packages/package/@id"
+        map: { '^xunit': xunit, '^nunit': nunit, '^MSTest': mstest }
+    multi: [test_tooling]
+    confidence: 0.85
+
+  - id: dotnet-global-json
+    files: ["**/global.json"]
+    parser: json
+    when: { jsonpath: "$.sdk.version" }
+    precedence: pin
+    applies_to: dotnet
+    emit:
+      build_tool_version: { jsonpath: "$.sdk.version" }
+    confidence: 0.95
+
+  - id: dotnet-directory-build-props
+    files: ["**/Directory.Build.props"]
+    parser: xml
+    when: { xpath: "//TargetFramework|//TargetFrameworks" }
+    applies_to: dotnet
+    emit:
+      runtime_version: { xpath: "//TargetFramework|//TargetFrameworks" }
+    confidence: 0.7
+
+  - id: dotnet-central-packages
+    files: ["**/Directory.Packages.props"]
+    parser: filename
+    emit: { nuget_central_package_management: present }
+    confidence: 0.9
+
+  - id: dotnet-nuget-config
+    files: ["**/nuget.config"]
+    parser: xml
+    emit:
+      nuget_sources: { xpath: "//packageSources/add/@value" }
+    confidence: 0.9
+
+  - id: dotnet-solution
+    files: ["**/*.sln"]
+    parser: filename
+    emit: { solution: { path: true } }
+    confidence: 0.9
+
+  - id: dotnet-web-config
+    files: ["**/web.config"]
+    parser: filename
+    emit: { iis_web_config: present }
+    confidence: 0.7
+
+  - id: dotnet-config-transforms
+    files: ["**/web.*.config", "**/app.*.config"]
+    parser: filename
+    emit: { config_transforms: present }
+    confidence: 0.8
+
+  - id: dotnet-publish-profile
+    files: ["**/*.pubxml"]
+    parser: filename
+    emit: { publish_profiles: present }
+    confidence: 0.8
+
+  - id: dotnet-nuspec
+    files: ["**/*.nuspec"]
+    parser: filename
+    emit: { nuget_package: { path: true } }
+    confidence: 0.8
+
+  - id: dotnet-functions-host
+    files: ["**/host.json"]
+    parser: json
+    when: { jsonpath: "$.version" }
+    emit: { azure_functions_host: { jsonpath: "$.version" } }
+    confidence: 0.7
+
+  # -- special project types -------------------------------------------------------
+  - id: dotnet-sqlproj
+    files: ["**/*.sqlproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: sql, project_kind: SSDT database (dacpac), build_tool: msbuild, packaging: dacpac }
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-ssis
+    files: ["**/*.dtproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: ssis, project_kind: SSIS, build_tool: ssis-build }
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-ssrs
+    files: ["**/*.rptproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: rdl, project_kind: SSRS, build_tool: msbuild }
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-wix
+    files: ["**/*.wixproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: wix, project_kind: WiX installer, build_tool: msbuild, packaging: msi }
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-vdproj
+    files: ["**/*.vdproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: vdproj, project_kind: Visual Studio installer, build_tool: devenv, packaging: msi }
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-service-fabric
+    files: ["**/*.sfproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: service-fabric, project_kind: Service Fabric application, build_tool: msbuild }
+    flags: [requires_windows]
+    confidence: 0.95
+
+  - id: dotnet-biztalk
+    files: ["**/*.btproj"]
+    parser: filename
+    group: dotnet-special
+    emit: { language: biztalk, project_kind: BizTalk, build_tool: msbuild }
+    flags: [requires_windows]
+    confidence: 0.95

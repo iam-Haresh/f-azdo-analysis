@@ -1,0 +1,359 @@
+{
+  "stages": [
+    {
+      "artifact_filters": [],
+      "condition": "",
+      "depends_on": [],
+      "display_name": "Dev",
+      "jobs": [
+        {
+          "condition": "",
+          "container": "",
+          "demands": [],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "Agent job",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "agent",
+          "matrix": [],
+          "name": "Agent job",
+          "pool": "Default",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Deploy web app",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "ConnectedServiceName": "bbbb0001-0000-4000-8000-000000000001",
+                "DeployToSlotOrASEFlag": "true",
+                "WebAppName": "legacy-web-$(Release.EnvironmentName)",
+                "enableXmlTransform": "true"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "release",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "497d490f-eea7-4f2b-ab94-48d9c1acdcb1",
+              "task_major": 4,
+              "task_name": "AzureRmWebAppDeployment",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": [
+                "Release.EnvironmentName"
+              ]
+            }
+          ],
+          "strategy": "",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        }
+      ],
+      "name": "Dev",
+      "parallelism": "concurrency=1,queueDepth=0",
+      "post_approval": {
+        "approvers": [],
+        "automated": true,
+        "order": "",
+        "required_count": null,
+        "timeout_minutes": null
+      },
+      "post_gates": null,
+      "pre_approval": {
+        "approvers": [],
+        "automated": true,
+        "order": "",
+        "required_count": null,
+        "timeout_minutes": null
+      },
+      "pre_gates": null,
+      "rank": 1,
+      "retention": "days=30,keep=3",
+      "schedules": [],
+      "template": "",
+      "tier": "dev",
+      "trigger": "after_release",
+      "variable_group_ids": [],
+      "variables": [
+        {
+          "allow_override": false,
+          "is_secret": false,
+          "name": "ConnString",
+          "owner": "DefaultCollection/Alpha/release/1#Dev",
+          "scope": "stage",
+          "source": "inline",
+          "suspected_secret": false,
+          "value": "Server=dev;***REDACTED***"
+        }
+      ]
+    },
+    {
+      "artifact_filters": [],
+      "condition": "",
+      "depends_on": [
+        "Dev"
+      ],
+      "display_name": "QA",
+      "jobs": [
+        {
+          "condition": "",
+          "container": "",
+          "demands": [],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "Agent job",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "agent",
+          "matrix": [],
+          "name": "Agent job",
+          "pool": "Default",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Deploy web app",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "ConnectedServiceName": "bbbb0001-0000-4000-8000-000000000001",
+                "DeployToSlotOrASEFlag": "true",
+                "WebAppName": "legacy-web-$(Release.EnvironmentName)",
+                "enableXmlTransform": "true"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "release",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "497d490f-eea7-4f2b-ab94-48d9c1acdcb1",
+              "task_major": 4,
+              "task_name": "AzureRmWebAppDeployment",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": [
+                "Release.EnvironmentName"
+              ]
+            }
+          ],
+          "strategy": "",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        }
+      ],
+      "name": "QA",
+      "parallelism": "concurrency=1,queueDepth=0",
+      "post_approval": {
+        "approvers": [],
+        "automated": true,
+        "order": "",
+        "required_count": null,
+        "timeout_minutes": null
+      },
+      "post_gates": null,
+      "pre_approval": {
+        "approvers": [],
+        "automated": true,
+        "order": "",
+        "required_count": null,
+        "timeout_minutes": null
+      },
+      "pre_gates": null,
+      "rank": 2,
+      "retention": "days=30,keep=3",
+      "schedules": [],
+      "template": "",
+      "tier": "qa",
+      "trigger": "after_stage",
+      "variable_group_ids": [],
+      "variables": []
+    },
+    {
+      "artifact_filters": [],
+      "condition": "",
+      "depends_on": [
+        "QA"
+      ],
+      "display_name": "Prod",
+      "jobs": [
+        {
+          "condition": "",
+          "container": "",
+          "demands": [],
+          "depends_on": [],
+          "deployment_group": "IIS-Prod",
+          "deployment_group_tags": [
+            "web"
+          ],
+          "display_name": "IIS deploy",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "deployment_group",
+          "matrix": [],
+          "name": "IIS deploy",
+          "pool": "",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Deploy IIS",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "WebSiteName": "LegacyWeb",
+                "XmlVariableSubstitution": "true"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "release",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "1b467810-6725-4b6d-accd-886174c09bba",
+              "task_major": 4,
+              "task_name": "IISWebAppDeploymentOnMachineGroup",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            }
+          ],
+          "strategy": "",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        },
+        {
+          "condition": "",
+          "container": "",
+          "demands": [],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "Agentless",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "server",
+          "matrix": [],
+          "name": "Agentless",
+          "pool": "",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Smoke test sign-off",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "instructions": "check"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "release",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "bcb64569-d51a-4af0-9c01-ea5d05b3b622",
+              "task_major": 4,
+              "task_name": "ManualIntervention",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            }
+          ],
+          "strategy": "",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        }
+      ],
+      "name": "Prod",
+      "parallelism": "concurrency=1,queueDepth=0",
+      "post_approval": {
+        "approvers": [],
+        "automated": true,
+        "order": "",
+        "required_count": null,
+        "timeout_minutes": null
+      },
+      "post_gates": null,
+      "pre_approval": {
+        "approvers": [
+          "user-74f6a464",
+          "[Alpha]\\Release Approvers"
+        ],
+        "automated": false,
+        "order": "beforeGates",
+        "required_count": 1,
+        "timeout_minutes": 1440
+      },
+      "pre_gates": {
+        "sampling_minutes": 15,
+        "tasks": [
+          "queryWorkItems"
+        ],
+        "timeout_minutes": 1440
+      },
+      "rank": 3,
+      "retention": "days=30,keep=3",
+      "schedules": [],
+      "template": "",
+      "tier": "prod",
+      "trigger": "after_stage",
+      "variable_group_ids": [],
+      "variables": []
+    }
+  ],
+  "triggers": [
+    {
+      "batch": false,
+      "branches_exclude": [],
+      "branches_include": [
+        "main"
+      ],
+      "cron": "",
+      "detail": "continuous deployment",
+      "paths_exclude": [],
+      "paths_include": [],
+      "timezone": "",
+      "type": "artifact",
+      "upstream": "_legacy"
+    }
+  ]
+}

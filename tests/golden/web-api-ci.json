@@ -1,0 +1,465 @@
+{
+  "stages": [
+    {
+      "artifact_filters": [],
+      "condition": "",
+      "depends_on": [],
+      "display_name": "Build",
+      "jobs": [
+        {
+          "condition": "",
+          "container": "",
+          "demands": [],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "agent",
+          "matrix": [],
+          "name": "api",
+          "pool": "Linux-Pool",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "UseDotNet",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "version": "8.0.x"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "b0ce7256-7898-45d3-9cb5-176b752bfea6",
+              "task_major": 2,
+              "task_name": "UseDotNet",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Build src/Api/Api.csproj",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "arguments": "-c $(buildConfiguration)",
+                "command": "build",
+                "projects": "src/Api/Api.csproj"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "5541a522-603c-47ad-91fc-a4b1d163081b",
+              "task_major": 2,
+              "task_name": "DotNetCoreCLI",
+              "template": "steps/dotnet-build.yml@templates",
+              "timeout": null,
+              "variables_referenced": [
+                "buildConfiguration"
+              ]
+            },
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Publish",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "command": "publish",
+                "projects": "src/Api/Api.csproj"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "5541a522-603c-47ad-91fc-a4b1d163081b",
+              "task_major": 2,
+              "task_name": "DotNetCoreCLI",
+              "template": "publish.yml",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "PublishPipelineArtifact",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "artifact": "drop",
+                "publish": "$(Build.ArtifactStagingDirectory)"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "",
+              "task_group_id": "",
+              "task_id": "",
+              "task_major": null,
+              "task_name": "PublishPipelineArtifact",
+              "template": "publish.yml",
+              "timeout": null,
+              "variables_referenced": [
+                "Build.ArtifactStagingDirectory"
+              ]
+            },
+            {
+              "children": [],
+              "condition": "${{ if eq(parameters.runTests, true) }}",
+              "continue_on_error": false,
+              "display_name": "Test",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "command": "test",
+                "projects": "src/Api.Tests/Api.Tests.csproj"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "5541a522-603c-47ad-91fc-a4b1d163081b",
+              "task_major": 2,
+              "task_name": "DotNetCoreCLI",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": [
+                "runTests"
+              ]
+            },
+            {
+              "children": [],
+              "condition": "${{ if eq(parameters.runTests, true) }}",
+              "continue_on_error": false,
+              "display_name": "PublishTestResults",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "testResultsFormat": "VSTest"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "0b0f01ed-7dde-43ff-9cbb-e48954daf9b1",
+              "task_major": 2,
+              "task_name": "PublishTestResults",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": [
+                "runTests"
+              ]
+            },
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Docker",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "command": "buildAndPush",
+                "containerRegistry": "acr-prod",
+                "repository": "web-api"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "e28912f1-0114-4464-802a-a3a35437fd16",
+              "task_major": 2,
+              "task_name": "Docker",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            }
+          ],
+          "strategy": "",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        },
+        {
+          "condition": "",
+          "container": "",
+          "demands": [
+            "npm"
+          ],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "agent",
+          "matrix": [],
+          "name": "ui",
+          "pool": "Linux-Pool",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "NodeTool",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "versionSpec": "20.x"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "31c75bbb-bcdf-4706-8d7c-4da6a1959bc2",
+              "task_major": 0,
+              "task_name": "NodeTool",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Build UI",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "workingDirectory": "web"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 2,
+              "script_text": "npm ci\nnpm run build\n",
+              "source": "yaml",
+              "task_author": "",
+              "task_group_id": "",
+              "task_id": "",
+              "task_major": null,
+              "task_name": "CmdLine",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            }
+          ],
+          "strategy": "",
+          "template": "jobs/angular.yml@templates",
+          "timeout": null,
+          "vm_image": ""
+        }
+      ],
+      "name": "Build",
+      "parallelism": "",
+      "post_approval": null,
+      "post_gates": null,
+      "pre_approval": null,
+      "pre_gates": null,
+      "rank": 1,
+      "retention": "",
+      "schedules": [],
+      "template": "",
+      "tier": "",
+      "trigger": "",
+      "variable_group_ids": [],
+      "variables": []
+    },
+    {
+      "artifact_filters": [],
+      "condition": "and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))",
+      "depends_on": [
+        "Build"
+      ],
+      "display_name": "Prod",
+      "jobs": [
+        {
+          "condition": "",
+          "container": "",
+          "demands": [],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "",
+          "environment": "web-prod",
+          "environment_resource": "web-ns",
+          "kind": "deployment",
+          "matrix": [],
+          "name": "deploy",
+          "pool": "Linux-Pool",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "HelmDeploy",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "chartPath": "charts/web-api",
+                "chartType": "FilePath",
+                "command": "upgrade",
+                "connectionType": "Kubernetes Service Connection",
+                "kubernetesServiceConnection": "aks-prod",
+                "namespace": "web",
+                "releaseName": "web-api"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "yaml",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "afa7d54d-537b-4dc8-b60a-e0eeea2c9a87",
+              "task_major": 0,
+              "task_name": "HelmDeploy",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "",
+              "continue_on_error": false,
+              "display_name": "Notify",
+              "enabled": true,
+              "has_inline_credential": true,
+              "in_catalog": true,
+              "inputs": {},
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 1,
+              "script_text": "curl -u deploy:***REDACTED*** https://hooks.example.com/notify\n",
+              "source": "yaml",
+              "task_author": "",
+              "task_group_id": "",
+              "task_id": "",
+              "task_major": null,
+              "task_name": "CmdLine",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            }
+          ],
+          "strategy": "runOnce",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        }
+      ],
+      "name": "Deploy_Prod",
+      "parallelism": "",
+      "post_approval": null,
+      "post_gates": null,
+      "pre_approval": null,
+      "pre_gates": null,
+      "rank": 2,
+      "retention": "",
+      "schedules": [],
+      "template": "",
+      "tier": "prod",
+      "trigger": "",
+      "variable_group_ids": [],
+      "variables": []
+    }
+  ],
+  "triggers": [
+    {
+      "batch": true,
+      "branches_exclude": [],
+      "branches_include": [
+        "main",
+        "release/*"
+      ],
+      "cron": "",
+      "detail": "",
+      "paths_exclude": [
+        "docs/*"
+      ],
+      "paths_include": [
+        "src/*",
+        "web/*"
+      ],
+      "timezone": "",
+      "type": "ci",
+      "upstream": ""
+    },
+    {
+      "batch": false,
+      "branches_exclude": [],
+      "branches_include": [
+        "main"
+      ],
+      "cron": "0 2 * * 1-5",
+      "detail": "always",
+      "paths_exclude": [],
+      "paths_include": [],
+      "timezone": "UTC",
+      "type": "schedule",
+      "upstream": ""
+    }
+  ]
+}

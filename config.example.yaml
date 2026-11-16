@@ -1,0 +1,203 @@
+# azdo-analyzer configuration. Copy to config.yaml (git-ignored) and adjust.
+# ONLY READ OPERATIONS: the tool sends HTTP GET requests only; nothing here can change that.
+# Secrets come from environment variables only (auth.token_env) - never put a PAT in this file.
+# Validate with:  azdo-analyzer config validate -c config.yaml
+version: 1
+
+run:
+  output_dir: ./out             # reports (sensitive, git-ignored)
+  cache_dir: ./.cache           # raw API payloads (sensitive, git-ignored)
+  cache_ttl_hours: 24           # reuse cached payloads newer than this
+  resume: true
+  concurrency: 6
+  requests_per_second: 10
+  timeout_seconds: 60
+  retries: 5
+  log_level: INFO
+  fail_on_project_error: false
+
+sources:                        # one entry per collection or organisation
+  - name: DefaultCollection
+    type: server                # server | services
+    base_url: https://tfs.example.com/tfs/DefaultCollection
+    api_version: auto           # auto | 4.1 | 5.0 | 6.0 | 7.0 | 7.1
+    auth:
+      method: pat               # only pat is implemented (see docs/decisions.md)
+      token_env: AZDO_PAT_DEFAULT
+    tls:
+      verify: false             # local runs against internal servers; set true + ca_bundle to verify
+      ca_bundle: null           # e.g. /etc/ssl/certs/corp-ca.pem (used when verify is true)
+    proxy: null
+    projects:
+      include: ["*"]            # glob; prefix "re:" for regex
+      exclude: ["Sandbox*", "zz_*"]
+  # - name: SecondCollection
+  #   type: server
+  #   base_url: https://tfs.example.com/tfs/SecondCollection
+  #   auth: { method: pat, token_env: AZDO_PAT_SECOND }
+  #   tls: { verify: false }
+
+filters:
+  include_disabled_pipelines: true
+  include_draft_definitions: false
+  include_deleted_release_definitions: false
+  pipeline_name_exclude: ["*-poc", "re:^test-.*"]
+  pipeline_folder_exclude: ['\Archive\*']
+
+collectors:                     # switch any collector off
+  projects: true
+  repositories: true
+  build_definitions: true
+  build_runs: true
+  release_definitions: true
+  release_runs: true
+  task_groups: true
+  variable_groups: true
+  service_connections: true
+  agent_pools: true
+  agent_capabilities: true
+  deployment_groups: true
+  environments: true
+  secure_files: true
+  task_catalog: true
+  installed_extensions: true
+  branch_policies: true
+  service_hooks: true
+  package_feeds: true
+  xaml_builds: false
+
+history:
+  lookback_days: 365            # how far back to pull runs/deployments
+  max_runs_per_definition: 50
+
+activity:                       # classification thresholds
+  active_within_days: 90
+  dormant_within_days: 365
+  failing_last_n_runs: 5
+  low_success_rate_pct: 60
+
+repo_scan:
+  enabled: true
+  branch: default               # default | explicit branch name
+  extra_branches: []            # reserved; not used yet (see docs/decisions.md)
+  max_tree_entries: 50000
+  max_file_size_kb: 512
+  max_manifest_files_per_repo: 300
+  ignore_paths:
+    - "**/node_modules/**"
+    - "**/bin/**"
+    - "**/obj/**"
+    - "**/vendor/**"
+    - "**/.git/**"
+    - "**/packages/**"
+  tfvc:
+    enabled: true
+    max_depth: 6
+
+yaml_pipelines:
+  resolve_templates: true
+  max_template_depth: 10
+  use_timeline_expansion: true  # read last successful run's timeline (GET only)
+
+detection:
+  rules_dir: rules              # built-in rules
+  extra_rules_dirs: []          # user rules override built-ins by rule id
+  min_confidence: 0.4
+  script_scan: true             # regex inline scripts for tool usage
+
+environments:                   # normalise AZDO stage names to tiers
+  tiers:
+    dev:  ["re:(?i)^dev.*", "re:(?i).*\\bci\\b.*"]
+    qa:   ["re:(?i)^(qa|test|sit).*"]
+    uat:  ["re:(?i)^(uat|stag|pre-?prod).*"]
+    perf: ["re:(?i)^perf.*"]
+    prod: ["re:(?i)^(prod|prd|live).*"]
+    dr:   ["re:(?i).*(-|_)dr$"]
+  production_tiers: [prod, dr]  # tiers that need an approval (security findings, last prod deploy)
+  deployment_tiers:             # tier -> GitLab deployment_tier
+    dev: development
+    qa: testing
+    uat: staging
+    perf: testing
+    prod: production
+    dr: production
+
+gitlab:
+  group_path_template: "{source}/{project}"     # proposed target path
+  image_registry_prefix: ""     # e.g. registry.internal/ci for air-gapped
+  artifact_repository: artifactory              # artifactory | nexus | gitlab
+  runner_tags:
+    linux: ["linux", "docker"]
+    windows: ["windows", "shell"]
+    macos: ["macos"]
+  task_mapping_file: mappings/tasks.yaml
+  concept_mapping_file: mappings/concepts.yaml
+  service_connection_mapping_file: mappings/service_connections.yaml
+  template_catalog:             # existing shared templates / CI components
+    - id: maven-app
+      match: { build_tool: maven }
+      include: { project: "devsecops/templates", file: "maven/app.yml", ref: "v1" }
+    - id: dotnet-framework
+      match: { language: csharp, runtime_family: netframework }
+      include: { project: "devsecops/templates", file: "dotnetfx/build.yml", ref: "v1" }
+    - id: openshift-deploy
+      match: { deploy_target: openshift }
+      include: { component: "$CI_SERVER_FQDN/devsecops/components/ose-deploy@1" }
+  security_baseline:            # what every migrated pipeline should have
+    - sast
+    - secret_detection
+    - dependency_scanning
+    - container_scanning
+  generate_skeletons: false     # draft .gitlab-ci.yml per pipeline
+
+complexity:
+  weights:
+    classic_definition: 2
+    per_10_tasks: 1
+    per_unmapped_task: 3
+    per_marketplace_task: 2
+    per_task_group: 1
+    per_stage: 1
+    per_service_connection: 1
+    windows_only: 2
+    deployment_group: 3
+    gates: 2
+    cross_project_dependency: 2
+    tfvc_source: 3
+    inline_script_over_50_lines: 2
+  bands: { S: 5, M: 12, L: 20 }   # score <= value; above the largest is XL
+  inline_script_line_threshold: 50
+
+clustering:
+  enabled: true
+  similarity_threshold: 0.8     # Jaccard on task sets within the same stack
+  ignore_tasks: ["CopyFiles", "PublishBuildArtifacts", "CmdLine", "PowerShell", "Bash"]
+  min_cluster_size: 2
+
+security:
+  secret_name_patterns: ["re:(?i)(password|passwd|pwd|secret|token|apikey|api_key|private_?key)"]
+  inline_credential_patterns:
+    - "re:(?i)(password|passwd|pwd|secret|token|api_?key)\\s*[=:]\\s*['\"]?[^\\s'\"$%{(]{6,}"
+    - "re:(?i)-p(assword)?\\s+[^\\s$%{(-][^\\s]{5,}"
+    - "re:AKIA[0-9A-Z]{16}"
+  shared_connection_project_threshold: 3
+
+waves:
+  migrate_statuses: [active, failing]
+  review_statuses: [dormant]
+  band_wave: { S: 1, M: 2, L: 3, XL: 4 }
+
+reports:
+  formats: [xlsx, markdown, json, csv, html]
+  per_project_markdown: true
+  per_pipeline_brief: true
+  dependency_graph: mermaid     # mermaid | none
+  excel:
+    sheets: all                 # or a list of sheet ids
+    freeze_header: true
+    autofilter: true
+  privacy:
+    include_identities: false   # false = hash user names and emails
+    redact_value_patterns:      # applied to variable values, step inputs and scripts
+      - "re:(?i)(password|secret|token|key)=\\S+"
+    max_variable_value_length: 200

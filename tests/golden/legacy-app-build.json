@@ -1,0 +1,382 @@
+{
+  "stages": [
+    {
+      "artifact_filters": [],
+      "condition": "",
+      "depends_on": [],
+      "display_name": "Build",
+      "jobs": [
+        {
+          "condition": "succeeded()",
+          "container": "",
+          "demands": [
+            "msbuild",
+            "visualstudio"
+          ],
+          "depends_on": [],
+          "deployment_group": "",
+          "deployment_group_tags": [],
+          "display_name": "Build",
+          "environment": "",
+          "environment_resource": "",
+          "kind": "agent",
+          "matrix": [
+            "BuildConfiguration"
+          ],
+          "name": "Job_1",
+          "pool": "Default",
+          "pool_is_hosted": false,
+          "services": [],
+          "skip_artifact_download": false,
+          "steps": [
+            {
+              "children": [
+                {
+                  "children": [
+                    {
+                      "children": [],
+                      "condition": "",
+                      "continue_on_error": false,
+                      "display_name": "NuGet restore",
+                      "enabled": true,
+                      "has_inline_credential": false,
+                      "in_catalog": true,
+                      "inputs": {
+                        "command": "restore",
+                        "restoreSolution": "**/*.sln"
+                      },
+                      "is_custom": false,
+                      "is_marketplace": false,
+                      "is_task_group": false,
+                      "script_lines": 0,
+                      "script_text": "",
+                      "source": "classic_build",
+                      "task_author": "Microsoft Corporation",
+                      "task_group_id": "",
+                      "task_id": "333b11bd-d341-40d9-afcf-b32d5ce6f23b",
+                      "task_major": 2,
+                      "task_name": "NuGetCommand",
+                      "template": "",
+                      "timeout": null,
+                      "variables_referenced": []
+                    }
+                  ],
+                  "condition": "",
+                  "continue_on_error": false,
+                  "display_name": "Restore",
+                  "enabled": true,
+                  "has_inline_credential": false,
+                  "in_catalog": true,
+                  "inputs": {},
+                  "is_custom": false,
+                  "is_marketplace": false,
+                  "is_task_group": true,
+                  "script_lines": 0,
+                  "script_text": "",
+                  "source": "classic_build",
+                  "task_author": "",
+                  "task_group_id": "aaaa0002-0000-4000-8000-000000000002",
+                  "task_id": "aaaa0002-0000-4000-8000-000000000002",
+                  "task_major": 1,
+                  "task_name": "Restore NuGet",
+                  "template": "",
+                  "timeout": null,
+                  "variables_referenced": []
+                },
+                {
+                  "children": [],
+                  "condition": "",
+                  "continue_on_error": false,
+                  "display_name": "Build solution",
+                  "enabled": true,
+                  "has_inline_credential": false,
+                  "in_catalog": true,
+                  "inputs": {
+                    "solution": "$(solution)",
+                    "vsVersion": "16.0"
+                  },
+                  "is_custom": false,
+                  "is_marketplace": false,
+                  "is_task_group": false,
+                  "script_lines": 0,
+                  "script_text": "",
+                  "source": "classic_build",
+                  "task_author": "Microsoft Corporation",
+                  "task_group_id": "",
+                  "task_id": "71a9a2d3-a98a-4caa-96ab-affca411ecda",
+                  "task_major": 2,
+                  "task_name": "VSBuild",
+                  "template": "",
+                  "timeout": null,
+                  "variables_referenced": [
+                    "solution"
+                  ]
+                }
+              ],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Task group: Build .NET Framework",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "solution": "LegacyWeb.sln"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": true,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "",
+              "task_group_id": "aaaa0001-0000-4000-8000-000000000001",
+              "task_id": "aaaa0001-0000-4000-8000-000000000001",
+              "task_major": 2,
+              "task_name": "Build .NET Framework",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Test",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "testAssemblyVer2": "**\\*Tests.dll"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "ef087383-ee5e-42c7-9a53-ab56c98420f9",
+              "task_major": 2,
+              "task_name": "VSTest",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Replace tokens",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "targetFiles": "**/*.config"
+              },
+              "is_custom": false,
+              "is_marketplace": true,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "Guillaume Rouchon",
+              "task_group_id": "",
+              "task_id": "a8515ec8-7254-4ffd-912c-86772e2b5962",
+              "task_major": 2,
+              "task_name": "replacetokens",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Acme deploy prep",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "mode": "prep"
+              },
+              "is_custom": true,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "Acme Platform Team",
+              "task_group_id": "",
+              "task_id": "c0ffee00-0000-4000-8000-000000000001",
+              "task_major": 2,
+              "task_name": "AcmeDeploy",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Old extension task",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": false,
+              "inputs": {},
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "",
+              "task_group_id": "",
+              "task_id": "dead0000-0000-4000-8000-00000000dead",
+              "task_major": 2,
+              "task_name": "Old extension task",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Legacy script",
+              "enabled": true,
+              "has_inline_credential": true,
+              "in_catalog": true,
+              "inputs": {
+                "script": "echo building\nnuget.exe push *.nupkg -ApiKey ***REDACTED***"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 2,
+              "script_text": "echo building\nnuget.exe push *.nupkg -ApiKey ***REDACTED***",
+              "source": "classic_build",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "d9bafed4-0b18-4f58-968d-86655b4d2ce9",
+              "task_major": 2,
+              "task_name": "CmdLine",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Disabled copy",
+              "enabled": false,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "Contents": "**"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "5bfb729a-a7c8-4a78-a7c3-8d717bb7c13c",
+              "task_major": 2,
+              "task_name": "CopyFiles",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": []
+            },
+            {
+              "children": [],
+              "condition": "succeeded()",
+              "continue_on_error": false,
+              "display_name": "Publish",
+              "enabled": true,
+              "has_inline_credential": false,
+              "in_catalog": true,
+              "inputs": {
+                "ArtifactName": "drop",
+                "PathtoPublish": "$(Build.ArtifactStagingDirectory)"
+              },
+              "is_custom": false,
+              "is_marketplace": false,
+              "is_task_group": false,
+              "script_lines": 0,
+              "script_text": "",
+              "source": "classic_build",
+              "task_author": "Microsoft Corporation",
+              "task_group_id": "",
+              "task_id": "2ff763a7-ce83-4e1f-bc89-0ae63477cebe",
+              "task_major": 2,
+              "task_name": "PublishBuildArtifacts",
+              "template": "",
+              "timeout": null,
+              "variables_referenced": [
+                "Build.ArtifactStagingDirectory"
+              ]
+            }
+          ],
+          "strategy": "multi-config",
+          "template": "",
+          "timeout": null,
+          "vm_image": ""
+        }
+      ],
+      "name": "Build",
+      "parallelism": "",
+      "post_approval": null,
+      "post_gates": null,
+      "pre_approval": null,
+      "pre_gates": null,
+      "rank": 0,
+      "retention": "",
+      "schedules": [],
+      "template": "",
+      "tier": "",
+      "trigger": "",
+      "variable_group_ids": [],
+      "variables": []
+    }
+  ],
+  "triggers": [
+    {
+      "batch": true,
+      "branches_exclude": [
+        "experimental/*"
+      ],
+      "branches_include": [
+        "main"
+      ],
+      "cron": "",
+      "detail": "",
+      "paths_exclude": [
+        "/docs"
+      ],
+      "paths_include": [
+        "/src"
+      ],
+      "timezone": "",
+      "type": "ci",
+      "upstream": ""
+    },
+    {
+      "batch": false,
+      "branches_exclude": [],
+      "branches_include": [
+        "main"
+      ],
+      "cron": "30 3 * * 1,2,3,4,5",
+      "detail": "only with changes",
+      "paths_exclude": [],
+      "paths_include": [],
+      "timezone": "W. Europe Standard Time",
+      "type": "schedule",
+      "upstream": ""
+    }
+  ]
+}

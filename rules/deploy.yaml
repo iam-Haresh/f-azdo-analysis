@@ -1,0 +1,114 @@
+# Deployment target detection (spec section 11).
+# A target matches a stage when any of its signals is present in the stage's jobs.
+
+deploy:
+  targets:
+    - type: azure_app_service
+      label: Azure App Service
+      tasks: [AzureWebApp, AzureRmWebAppDeployment, AzureWebAppContainer, AzureAppServiceManage]
+      identifier_inputs: [WebAppName, appName]
+    - type: azure_functions
+      label: Azure Functions
+      tasks: [AzureFunctionApp, AzureFunctionAppContainer]
+      identifier_inputs: [appName]
+    - type: kubernetes
+      label: Kubernetes / AKS
+      tasks: [Kubernetes, KubernetesManifest, HelmDeploy, Kubectl]
+      script_regex: ['\bkubectl\s+(apply|set|rollout|create|replace|delete|patch)\b', '\bhelm\s+(upgrade|install)\b']
+      connection_types: [kubernetes]
+      environment_resource_types: [kubernetes]
+      identifier_inputs: [namespace, kubernetesCluster, releaseName]
+    - type: openshift
+      label: OpenShift
+      tasks: ['re:(?i)^oc(cmd|setup)?$', 're:(?i)openshift']
+      script_regex: ['(?m)(^|[\s;&|])oc\s+(apply|login|rollout|new-app|start-build|process|project|set|tag|create|replace)\b']
+      connection_types: [openshift]
+    - type: iis_windows_vm
+      label: IIS / Windows VM
+      tasks: ['re:(?i)^IISWebApp', WindowsMachineFileCopy, PowerShellOnTargetMachines]
+      phase_types: [deployment_group]
+      identifier_inputs: [WebSiteName, websiteName, WebsiteName, EnvironmentName, MachineNames, Machines]
+    - type: linux_vm
+      label: Linux VM (SSH)
+      tasks: [SSH, CopyFilesOverSSH]
+      connection_types: [ssh]
+      identifier_inputs: [sshEndpoint]
+    - type: database
+      label: Database
+      tasks: [SqlAzureDacpacDeployment, SqlDacpacDeploymentOnMachineGroup, SqlServerDacpacDeployment, 're:(?i)flyway', 're:(?i)liquibase', 're:(?i)dacpac']
+      script_regex: ['(?i)\bsqlpackage(\.exe)?\b', '\bflyway\s+.*\bmigrate\b', '\bliquibase\s+.*\bupdate\b']
+      identifier_inputs: [DatabaseName, ServerName]
+    - type: azure_iac
+      label: Azure infrastructure / IaC
+      tasks: [AzureResourceManagerTemplateDeployment, AzureResourceGroupDeployment, AzureCLI, AzurePowerShell, 're:(?i)^terraform']
+      script_regex: ['\bterraform\s+(apply|destroy)\b', '(?m)(^|[\s;&|])az\s+deployment\b']
+      identifier_inputs: [resourceGroupName]
+    - type: aws
+      label: AWS
+      tasks: ['re:^(AWSCLI|AWSShellScript|AWSPowerShellModuleScript|S3Upload|LambdaDeployFunction|LambdaInvokeFunction|ECRPushImage|CloudFormationCreateOrUpdateStack|CloudFormationExecuteChangeSet|CodeDeployDeployApplication|BeanstalkDeployApplication)$']
+      script_regex: ['(?m)(^|[\s;&|])aws\s+(s3|lambda|ecs|ecr|cloudformation|deploy|eks)\b']
+      connection_types: [aws, AWS]
+      identifier_inputs: [functionName, stackName, bucketName, regionName]
+    - type: container_registry
+      label: Container registry
+      tasks: [ECRPushImage, 're:(?i)^(Artifactory|JFrog)Docker']
+      task_inputs:
+        - { task: Docker, input: command, regex: '(?i)push' }
+        - { task: Docker, input: action, regex: '(?i)push' }
+      script_regex: ['\b(docker|podman)\s+push\b']
+      connection_types: [dockerregistry]
+      identifier_inputs: [containerRegistry, repository, imageName]
+    - type: package_repository
+      label: Package repository
+      tasks: [NuGetPublisher, TwineAuthenticate, UniversalPackages, 're:(?i)^(Artifactory|JFrog)(?!Docker)', 're:(?i)^Nexus']
+      task_inputs:
+        - { task: NuGetCommand, input: command, regex: '(?i)push' }
+        - { task: DotNetCoreCLI, input: command, regex: '(?i)push' }
+        - { task: Npm, input: command, regex: '(?i)publish' }
+        - { task: Maven, input: goals, regex: '(?i)\bdeploy\b' }
+        - { task: Gradle, input: tasks, regex: '(?i)publish' }
+      script_regex: ['(?i)\bnuget(\.exe)?\s+push\b', '\bdotnet\s+nuget\s+push\b', '\bnpm\s+publish\b', '\bmvnw?\b.*\bdeploy\b', '\btwine\s+upload\b', '\b(jf|jfrog)\s+rt\s+u(pload)?\b']
+      identifier_inputs: [publishVstsFeed, publishFeed, targetRepo, vstsFeedPublish]
+    - type: azure_storage
+      label: Azure Storage / static site
+      tasks: [AzureFileCopy, 're:(?i)^AzureBlob']
+      identifier_inputs: [storage, StorageAccountRM, ContainerName]
+    - type: service_fabric
+      label: Service Fabric
+      tasks: [ServiceFabricDeploy, ServiceFabricComposeDeploy]
+    - type: mobile_distribution
+      label: Mobile distribution
+      tasks: [AppCenterDistribute, 're:(?i)^(GooglePlay|AppStore)']
+    - type: ansible
+      label: Ansible-managed hosts
+      tasks: ['re:(?i)^ansible']
+      script_regex: ['\bansible-playbook\b']
+
+  # Config transformation needs an explicit replacement in GitLab (envsubst, yq, sed ...).
+  config_transform_tasks: [FileTransform, 're:(?i)replace-?tokens', MagicChunks, 're:(?i)jsonpatch', 're:(?i)xdttransform|configtransform']
+  config_transform_inputs:
+    - enableXmlTransform
+    - XmlTransformation
+    - XmlVariableSubstitution
+    - enableXmlVariableSubstitution
+    - JSONFiles
+    - xmlTransformationRules
+    - jsonTargetFiles
+    - xmlTargetFiles
+
+  # Matched against "<task> <input>=<value> ..." plus inline script text.
+  strategy_patterns:
+    slot_swap: ['(?i)AzureAppServiceManage .*Action=Swap Slots', '(?i)DeployToSlotOrASEFlag=true', '(?i)deployToSlotOrASE=true']
+    blue_green: ['(?i)blue.?green']
+    canary: ['(?i)strategy=canary', '(?i)\bcanary\b']
+    rolling: ['(?i)\brollout\s+status\b', '(?i)deploymentHealthOption=']
+
+  credential_types:
+    ServicePrincipal: service principal secret
+    ManagedServiceIdentity: managed identity
+    WorkloadIdentityFederation: workload identity federation (OIDC)
+    UsernamePassword: username / password
+    Token: token
+    Kubernetes: kubeconfig / service account
+    Certificate: certificate
+    None: none

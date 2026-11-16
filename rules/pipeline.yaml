@@ -1,0 +1,85 @@
+# Pipeline evidence (spec section 10 A): what tasks and inline scripts say about the stack.
+# `task` is an exact task name (case-insensitive) or a `re:` pattern.
+
+pipeline:
+  # Inputs that hold inline script text (lower-case), scanned when detection.script_scan is on.
+  script_inputs: [script, inline, inlinescript, commands, sqlinline, scriptblock]
+
+  # Inputs that point at a solution / project / working directory: used to map a pipeline
+  # to a component inside a monorepo.
+  path_inputs:
+    - solution
+    - projects
+    - project
+    - restoreSolution
+    - workingDirectory
+    - workingDir
+    - cwd
+    - mavenPomFile
+    - gradleWrapperFile
+    - buildFile
+    - dockerfile
+    - dockerFile
+    - buildContext
+    - packageDirectory
+    - chartPath
+    - workingFolder
+    - rootDirectory
+
+  tasks:
+    - { task: Maven, emit: { language: java, build_tool: maven, runtime_family: jvm }, version_inputs: { runtime_version: [jdkVersionOption] } }
+    - { task: Gradle, emit: { language: java, build_tool: gradle, runtime_family: jvm }, version_inputs: { runtime_version: [jdkVersionOption] } }
+    - { task: Ant, emit: { language: java, build_tool: ant, runtime_family: jvm }, version_inputs: { runtime_version: [jdkVersionOption] } }
+    - { task: JavaToolInstaller, emit: { runtime_family: jvm }, version_inputs: { runtime_version: [versionSpec] } }
+    - { task: DotNetCoreCLI, emit: { runtime_family: dotnet, build_tool: dotnet-cli } }
+    - { task: UseDotNet, emit: { runtime_family: dotnet }, version_inputs: { runtime_version: [version] } }
+    - { task: DotNetCoreInstaller, emit: { runtime_family: dotnet }, version_inputs: { runtime_version: [version] } }
+    - { task: VSBuild, emit: { build_tool: msbuild, runtime_family: netframework }, version_inputs: { build_tool_version: [vsVersion] }, confidence: 0.7 }
+    - { task: MSBuild, emit: { build_tool: msbuild }, version_inputs: { build_tool_version: [msbuildVersion] } }
+    - { task: VSTest, emit: { test_tooling: vstest } }
+    - { task: "re:(?i)^NuGet(Command|Installer|Restore|ToolInstaller|Authenticate)$", emit: { package_manager: nuget } }
+    - { task: Npm, emit: { runtime_family: node, package_manager: npm } }
+    - { task: "re:(?i)^(NodeTool|UseNode)$", emit: { runtime_family: node }, version_inputs: { runtime_version: [versionSpec, version] } }
+    - { task: "re:(?i)^yarn", emit: { runtime_family: node, package_manager: yarn } }
+    - { task: UsePythonVersion, emit: { language: python, runtime_family: python }, version_inputs: { runtime_version: [versionSpec] } }
+    - { task: "re:(?i)^(PythonScript|PipAuthenticate|TwineAuthenticate)$", emit: { language: python, runtime_family: python } }
+    - { task: Go, emit: { language: go, build_tool: go, runtime_family: go } }
+    - { task: GoTool, emit: { language: go, runtime_family: go }, version_inputs: { runtime_version: [version] } }
+    - { task: "re:(?i)^Docker(Compose)?$", emit: { container_tool: docker } }
+    - { task: Xcode, emit: { build_tool: xcode, runtime_family: ios }, version_inputs: { build_tool_version: [xcodeVersion] } }
+    - { task: "re:(?i)^Xamarin(Android|iOS)$", emit: { framework: xamarin, build_tool: msbuild } }
+    - { task: CMake, emit: { build_tool: cmake, language: cpp } }
+    - { task: "re:(?i)^(Grunt|Gulp)$", emit: { runtime_family: node } }
+    - { task: "re:(?i)^Helm(Deploy|Installer)$", emit: { deploy_tool: helm } }
+    - { task: "re:(?i)^(Kubernetes|Kubectl|KubernetesManifest|KubectlInstaller)$", emit: { deploy_tool: kubectl } }
+    - { task: "re:(?i)terraform", emit: { iac_tool: terraform }, version_inputs: { iac_tool_version: [terraformVersion] } }
+    - { task: "re:(?i)^ansible", emit: { iac_tool: ansible } }
+    - { task: "re:(?i)^Azure(CLI|PowerShell)$", emit: { cloud_cli: azure } }
+    - { task: "re:^AWS", emit: { cloud_cli: aws } }
+    - { task: "re:(?i)jfrog|artifactory", emit: { artifact_tool: jfrog } }
+    - { task: PublishTestResults, version_inputs: { test_results_format: [testResultsFormat, testRunner] } }
+    - { task: PublishCodeCoverageResults, version_inputs: { coverage_format: [codeCoverageTool] } }
+
+  scripts:
+    - { id: dotnet-cli, regex: '\bdotnet\s+(build|restore|test|publish|pack|run|msbuild|tool)\b', emit: { runtime_family: dotnet, build_tool: dotnet-cli } }
+    - { id: msbuild, regex: '(?i)\bmsbuild(\.exe)?\s', emit: { build_tool: msbuild } }
+    - { id: nuget, regex: '(?i)\bnuget(\.exe)?\s+(restore|push|pack|install)\b', emit: { package_manager: nuget } }
+    - { id: maven, regex: '(?m)(^|[\s;&|/\\])mvnw?(\.cmd)?\s', emit: { language: java, build_tool: maven, runtime_family: jvm } }
+    - { id: gradle, regex: '(?m)(^|[\s;&|/\\])gradlew?(\.bat)?\s', emit: { language: java, build_tool: gradle, runtime_family: jvm } }
+    - { id: npm, regex: '\bnpm\s+(run|ci|install|test|publish|i)\b', emit: { runtime_family: node, package_manager: npm } }
+    - { id: angular-cli, regex: '\bng\s+(build|test|lint|e2e)\b', emit: { framework: angular, runtime_family: node } }
+    - { id: yarn, regex: '(?m)(^|[\s;&|])yarn(\s+(install|build|test|run)\b|\s*$)', emit: { runtime_family: node, package_manager: yarn } }
+    - { id: pnpm, regex: '\bpnpm\s+(install|run|build|test|i)\b', emit: { runtime_family: node, package_manager: pnpm } }
+    - { id: pip, regex: '\bpip3?\s+install\b', emit: { language: python, runtime_family: python, package_manager: pip } }
+    - { id: pytest, regex: '\b(pytest|python3?\s+-m\s+pytest)\b', emit: { language: python, test_tooling: pytest } }
+    - { id: go, regex: '\bgo\s+(build|test|mod|vet)\b', emit: { language: go, build_tool: go, runtime_family: go } }
+    - { id: cargo, regex: '\bcargo\s+(build|test|publish)\b', emit: { language: rust, build_tool: cargo } }
+    - { id: docker, regex: '\b(docker|podman)\s+(build|push|buildx)\b', emit: { container_tool: docker } }
+    - { id: kubectl, regex: '\bkubectl\s+\w+', emit: { deploy_tool: kubectl } }
+    - { id: helm, regex: '\bhelm\s+(upgrade|install|package|lint|template|push)\b', emit: { deploy_tool: helm } }
+    - { id: oc, regex: '(?m)(^|[\s;&|])oc\s+(apply|login|rollout|new-app|start-build|process|project|set|tag|create|replace)\b', emit: { deploy_tool: oc } }
+    - { id: terraform, regex: '\bterraform\s+(init|plan|apply|destroy|validate)\b', emit: { iac_tool: terraform } }
+    - { id: ansible, regex: '\bansible-playbook\b', emit: { iac_tool: ansible } }
+    - { id: aws-cli, regex: '(?m)(^|[\s;&|])aws\s+[a-z0-9-]+\s', emit: { cloud_cli: aws } }
+    - { id: az-cli, regex: '(?m)(^|[\s;&|])az\s+[a-z]+\s', emit: { cloud_cli: azure } }
+    - { id: jfrog-cli, regex: '(?m)(^|[\s;&|])(jf|jfrog)\s+\w+', emit: { artifact_tool: jfrog } }

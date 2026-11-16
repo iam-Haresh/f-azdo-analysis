@@ -1,0 +1,576 @@
+# Repository evidence: Java, JavaScript / TypeScript, Python.
+
+app_groups: [java, node, python]
+
+repo:
+  # -- Java: Maven ---------------------------------------------------------------
+  - id: maven-pom
+    files: ["**/pom.xml"]
+    parser: xml
+    when: { xpath: "/project" }
+    group: java
+    emit:
+      language: java
+      runtime_family: jvm
+      build_tool: maven
+      runtime_version:
+        xpath: "/project/properties/maven.compiler.release|/project/properties/maven.compiler.source|/project/properties/java.version|//plugin[artifactId='maven-compiler-plugin']/configuration/release|//plugin[artifactId='maven-compiler-plugin']/configuration/source"
+      packaging: { xpath: "/project/packaging" }
+      artifact: { xpath: "/project/artifactId" }
+    confidence: 0.9
+
+  - id: maven-kotlin
+    files: ["**/pom.xml"]
+    parser: xml
+    when: { xpath: "//plugin[artifactId='kotlin-maven-plugin']" }
+    group: java
+    emit: { language: kotlin }
+    confidence: 0.95
+
+  - id: maven-spring-boot
+    files: ["**/pom.xml"]
+    parser: xml
+    when:
+      any:
+        - { xpath: "/project/parent[artifactId='spring-boot-starter-parent']" }
+        - { xpath: "//dependency[starts-with(artifactId, 'spring-boot')]" }
+        - { xpath: "//plugin[artifactId='spring-boot-maven-plugin']" }
+    group: java
+    emit:
+      framework: spring-boot
+      framework_version: { xpath: "/project/parent[artifactId='spring-boot-starter-parent']/version|/project/properties/spring-boot.version" }
+    confidence: 0.95
+
+  - id: maven-quarkus
+    files: ["**/pom.xml"]
+    parser: xml
+    when: { xpath: "//*[starts-with(groupId, 'io.quarkus')]" }
+    group: java
+    emit:
+      framework: quarkus
+      framework_version: { xpath: "/project/properties/quarkus.platform.version|/project/properties/quarkus.version" }
+    confidence: 0.95
+
+  - id: maven-micronaut
+    files: ["**/pom.xml"]
+    parser: xml
+    when: { xpath: "//*[starts-with(groupId, 'io.micronaut')]" }
+    group: java
+    emit:
+      framework: micronaut
+      framework_version: { xpath: "/project/parent[artifactId='micronaut-parent']/version|/project/properties/micronaut.version" }
+    confidence: 0.95
+
+  - id: maven-modules
+    files: ["**/pom.xml"]
+    parser: xml
+    when: { xpath: "/project/modules/module" }
+    group: java
+    emit:
+      modules: { xpath: "/project/modules/module" }
+    multi: [modules]
+    confidence: 0.9
+
+  - id: maven-test-tooling
+    files: ["**/pom.xml"]
+    parser: xml
+    group: java
+    emit:
+      test_tooling:
+        xpath: "//dependency/artifactId|//plugin/artifactId"
+        map: { '^junit': junit, '^testng$': testng, '^mockito': mockito, '^jacoco-maven-plugin$': jacoco, '^spring-boot-starter-test$': junit }
+    multi: [test_tooling]
+    confidence: 0.85
+
+  - id: maven-repositories
+    files: ["**/pom.xml"]
+    parser: xml
+    group: java
+    emit:
+      repositories: { xpath: "/project/repositories/repository/url|/project/distributionManagement/*/url" }
+    multi: [repositories]
+    confidence: 0.85
+
+  - id: maven-wrapper
+    files: ["**/.mvn/wrapper/maven-wrapper.properties"]
+    parser: properties
+    precedence: pin
+    applies_to: java
+    dir_up: 2
+    emit:
+      build_tool_version: { key: distributionUrl, pattern: 'apache-maven-([\d.]+)' }
+    confidence: 0.95
+
+  # -- Java: Gradle --------------------------------------------------------------
+  - id: gradle-build
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { not: { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' } }
+    group: java
+    emit:
+      language: java
+      runtime_family: jvm
+      build_tool: gradle
+    confidence: 0.85
+
+  - id: gradle-java-compat
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { not: { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' } }
+    group: java
+    emit:
+      runtime_version: { regex: '(?:sourceCompatibility|targetCompatibility)\s*=?\s*(?:JavaVersion\.VERSION_)?[''"]?(\d[\d_.]*)' }
+    confidence: 0.85
+
+  - id: gradle-java-toolchain
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { not: { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' } }
+    group: java
+    emit:
+      runtime_version: { regex: 'JavaLanguageVersion\.of\((\d+)\)|jvmToolchain\((\d+)\)', pattern: '(\d+)' }
+    confidence: 0.9
+
+  - id: gradle-kotlin
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when:
+      all:
+        - { regex: 'kotlin\("jvm"\)|org\.jetbrains\.kotlin\.jvm|kotlin-gradle-plugin' }
+        - { not: { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' } }
+    group: java
+    emit: { language: kotlin }
+    confidence: 0.95
+
+  - id: gradle-spring-boot
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { regex: 'org\.springframework\.boot' }
+    group: java
+    emit:
+      framework: spring-boot
+      framework_version: { regex: 'org\.springframework\.boot[''"]?\)?\s+version\s+[''"]([\w.\-]+)[''"]' }
+    confidence: 0.95
+
+  - id: gradle-quarkus
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { regex: 'io\.quarkus' }
+    group: java
+    emit: { framework: quarkus }
+    confidence: 0.95
+
+  - id: gradle-micronaut
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    when: { regex: 'io\.micronaut' }
+    group: java
+    emit: { framework: micronaut }
+    confidence: 0.95
+
+  - id: gradle-test-tooling
+    files: ["**/build.gradle", "**/build.gradle.kts"]
+    parser: regex
+    group: java
+    when: { not: { regex: 'com\.android\.(application|library)|com\.android\.tools\.build' } }
+    emit:
+      test_tooling:
+        regex: '(useJUnitPlatform|junit|testng|mockito|jacoco|spock)'
+        ignore_case: true
+        map: { 'junit': junit, 'testng': testng, 'mockito': mockito, 'jacoco': jacoco, 'spock': spock }
+    multi: [test_tooling]
+    confidence: 0.8
+
+  - id: gradle-settings
+    files: ["**/settings.gradle", "**/settings.gradle.kts"]
+    parser: regex
+    when: { regex: '(?m)^\s*include\b' }
+    emit: { gradle_multi_project: present }
+    confidence: 0.85
+
+  - id: gradle-wrapper
+    files: ["**/gradle/wrapper/gradle-wrapper.properties"]
+    parser: properties
+    precedence: pin
+    applies_to: java
+    dir_up: 2
+    emit:
+      build_tool_version: { key: distributionUrl, pattern: 'gradle-([\d.]+)' }
+    confidence: 0.95
+
+  - id: gradle-wrapper-android
+    files: ["**/gradle/wrapper/gradle-wrapper.properties"]
+    parser: properties
+    precedence: pin
+    applies_to: android
+    dir_up: 2
+    emit:
+      build_tool_version: { key: distributionUrl, pattern: 'gradle-([\d.]+)' }
+    confidence: 0.95
+
+  # -- Java: Ant and pin files -----------------------------------------------------
+  - id: ant-build
+    files: ["**/build.xml"]
+    parser: xml
+    when: { xpath: "/project/target" }
+    group: java
+    emit: { language: java, runtime_family: jvm, build_tool: ant }
+    confidence: 0.7
+
+  - id: java-version-file
+    files: ["**/.java-version"]
+    parser: regex
+    precedence: pin
+    applies_to: java
+    emit:
+      runtime_version: { regex: '^\s*(?:[a-z]+-)?(\d[\d.]*)' }
+    confidence: 0.95
+
+  - id: java-sdkmanrc
+    files: ["**/.sdkmanrc"]
+    parser: properties
+    precedence: pin
+    applies_to: java
+    emit:
+      runtime_version: { key: java, pattern: '^(\d[\d.]*)' }
+    confidence: 0.95
+
+  # -- JavaScript / TypeScript -----------------------------------------------------
+  - id: node-package
+    files: ["**/package.json"]
+    parser: json
+    group: node
+    emit:
+      language: javascript
+      runtime_family: node
+      package_manager: npm
+      runtime_version: { jsonpath: "$.engines.node" }
+      script_build: { jsonpath: "$.scripts.build" }
+      script_test: { jsonpath: "$.scripts.test" }
+      script_lint: { jsonpath: "$.scripts.lint" }
+      workspaces: { jsonpath: ["$.workspaces", "$.workspaces.packages"] }
+      artifact: { jsonpath: "$.name" }
+    confidence: 0.6
+
+  - id: node-package-manager-field
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: "$.packageManager" }
+    group: node
+    emit:
+      package_manager: { jsonpath: "$.packageManager", pattern: '^([a-z]+)@' }
+      package_manager_version: { jsonpath: "$.packageManager", pattern: '@([\w.\-]+)' }
+    confidence: 0.95
+
+  - id: angular
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: "$.dependencies['@angular/core']" }
+    group: node
+    emit:
+      framework: angular
+      framework_version: { jsonpath: "$.dependencies['@angular/core']" }
+    confidence: 0.95
+
+  - id: react
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: ["$.dependencies.react", "$.devDependencies.react"] }
+    group: node
+    emit:
+      framework: react
+      framework_version: { jsonpath: ["$.dependencies.react", "$.devDependencies.react"] }
+    confidence: 0.9
+
+  - id: react-native
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: "$.dependencies['react-native']" }
+    group: node
+    emit:
+      framework: react-native
+      framework_version: { jsonpath: "$.dependencies['react-native']" }
+    confidence: 0.97
+
+  - id: nextjs
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: "$.dependencies.next" }
+    group: node
+    emit:
+      framework: next
+      framework_version: { jsonpath: "$.dependencies.next" }
+    confidence: 0.95
+
+  - id: vue
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: ["$.dependencies.vue", "$.devDependencies.vue"] }
+    group: node
+    emit:
+      framework: vue
+      framework_version: { jsonpath: ["$.dependencies.vue", "$.devDependencies.vue"] }
+    confidence: 0.9
+
+  - id: nuxt
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: ["$.dependencies.nuxt", "$.devDependencies.nuxt"] }
+    group: node
+    emit:
+      framework: nuxt
+      framework_version: { jsonpath: ["$.dependencies.nuxt", "$.devDependencies.nuxt"] }
+    confidence: 0.95
+
+  - id: svelte
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: ["$.dependencies.svelte", "$.devDependencies.svelte"] }
+    group: node
+    emit:
+      framework: svelte
+      framework_version: { jsonpath: ["$.dependencies.svelte", "$.devDependencies.svelte"] }
+    confidence: 0.9
+
+  - id: express
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: "$.dependencies.express" }
+    group: node
+    emit:
+      framework: express
+      framework_version: { jsonpath: "$.dependencies.express" }
+    confidence: 0.85
+
+  - id: nestjs
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: "$.dependencies['@nestjs/core']" }
+    group: node
+    emit:
+      framework: nestjs
+      framework_version: { jsonpath: "$.dependencies['@nestjs/core']" }
+    confidence: 0.95
+
+  - id: electron
+    files: ["**/package.json"]
+    parser: json
+    when: { jsonpath: ["$.dependencies.electron", "$.devDependencies.electron"] }
+    group: node
+    emit:
+      framework: electron
+      framework_version: { jsonpath: ["$.dependencies.electron", "$.devDependencies.electron"] }
+    confidence: 0.8
+
+  - id: node-test-tooling
+    files: ["**/package.json"]
+    parser: json
+    group: node
+    emit:
+      test_tooling:
+        regex: '"(jest|mocha|karma|jasmine-core|vitest|cypress|@playwright/test)"\s*:'
+        map: { 'jest': jest, 'mocha': mocha, 'karma': karma, 'jasmine': jasmine, 'vitest': vitest, 'cypress': cypress, 'playwright': playwright }
+    multi: [test_tooling]
+    confidence: 0.85
+
+  - id: typescript
+    files: ["**/tsconfig.json"]
+    parser: filename
+    group: node
+    emit: { language: typescript }
+    confidence: 0.9
+
+  - id: node-yarn-lock
+    files: ["**/yarn.lock"]
+    parser: filename
+    group: node
+    emit: { package_manager: yarn }
+    confidence: 0.9
+
+  - id: node-pnpm-lock
+    files: ["**/pnpm-lock.yaml"]
+    parser: filename
+    group: node
+    emit: { package_manager: pnpm }
+    confidence: 0.9
+
+  - id: node-npm-lock
+    files: ["**/package-lock.json", "**/npm-shrinkwrap.json"]
+    parser: filename
+    group: node
+    emit: { package_manager: npm }
+    confidence: 0.9
+
+  - id: node-version-file
+    files: ["**/.nvmrc", "**/.node-version"]
+    parser: regex
+    precedence: pin
+    applies_to: node
+    emit:
+      runtime_version: { regex: '^\s*v?(\d[\d.]*|lts/\S+)' }
+    confidence: 0.95
+
+  - id: angular-workspace
+    files: ["**/angular.json"]
+    parser: filename
+    group: node
+    emit: { framework: angular }
+    confidence: 0.9
+
+  - id: next-config
+    files: ["**/next.config.*"]
+    parser: filename
+    group: node
+    emit: { framework: next }
+    confidence: 0.9
+
+  - id: node-bundler-vite
+    files: ["**/vite.config.*"]
+    parser: filename
+    group: node
+    emit: { bundler: vite }
+    confidence: 0.9
+
+  - id: node-bundler-webpack
+    files: ["**/webpack.config.*"]
+    parser: filename
+    group: node
+    emit: { bundler: webpack }
+    confidence: 0.9
+
+  - id: node-nx
+    files: ["**/nx.json"]
+    parser: filename
+    emit: { monorepo_tool: nx }
+    confidence: 0.9
+
+  - id: node-lerna
+    files: ["**/lerna.json"]
+    parser: filename
+    emit: { monorepo_tool: lerna }
+    confidence: 0.9
+
+  - id: node-npmrc
+    files: ["**/.npmrc"]
+    parser: properties
+    emit:
+      npm_registry: { key: registry }
+    confidence: 0.9
+
+  # -- Python --------------------------------------------------------------------
+  - id: python-pyproject
+    files: ["**/pyproject.toml"]
+    parser: toml
+    group: python
+    emit:
+      language: python
+      runtime_family: python
+      runtime_version: { jsonpath: ["$.project.requires-python", "$.tool.poetry.dependencies.python"] }
+      build_tool:
+        jsonpath: "$.build-system.build-backend"
+        map: { poetry: poetry, hatchling: hatch, setuptools: setuptools, flit: flit, pdm: pdm, maturin: maturin, uv_build: uv }
+      artifact: { jsonpath: ["$.project.name", "$.tool.poetry.name"] }
+    confidence: 0.9
+
+  - id: python-requirements
+    files: ["**/requirements*.txt"]
+    parser: regex
+    group: python
+    emit:
+      language: python
+      runtime_family: python
+      package_manager: pip
+      python_index: { regex: '(?m)^\s*--(?:extra-)?index-url\s+(\S+)', pattern: 'https?://(?:[^@/\s]+@)?([^/\s]+)' }
+    multi: [python_index]
+    confidence: 0.7
+
+  - id: python-setup
+    files: ["**/setup.py", "**/setup.cfg"]
+    parser: filename
+    group: python
+    emit: { language: python, runtime_family: python, build_tool: setuptools }
+    confidence: 0.6
+
+  - id: python-pipfile
+    files: ["**/Pipfile"]
+    parser: toml
+    group: python
+    emit:
+      language: python
+      runtime_family: python
+      package_manager: pipenv
+      runtime_version: { jsonpath: "$.requires.python_version" }
+    confidence: 0.85
+
+  - id: python-poetry-lock
+    files: ["**/poetry.lock"]
+    parser: filename
+    group: python
+    emit: { package_manager: poetry }
+    confidence: 0.9
+
+  - id: python-uv-lock
+    files: ["**/uv.lock"]
+    parser: filename
+    group: python
+    emit: { package_manager: uv }
+    confidence: 0.9
+
+  - id: python-django
+    files: ["**/pyproject.toml", "**/requirements*.txt", "**/Pipfile", "**/setup.py"]
+    parser: regex
+    when: { regex: '(?im)^[\s"'']*django\b(?!-)' }
+    group: python
+    emit: { framework: django }
+    confidence: 0.9
+
+  - id: python-flask
+    files: ["**/pyproject.toml", "**/requirements*.txt", "**/Pipfile", "**/setup.py"]
+    parser: regex
+    when: { regex: '(?im)^[\s"'']*flask\b(?!-)' }
+    group: python
+    emit: { framework: flask }
+    confidence: 0.85
+
+  - id: python-fastapi
+    files: ["**/pyproject.toml", "**/requirements*.txt", "**/Pipfile", "**/setup.py"]
+    parser: regex
+    when: { regex: '(?im)^[\s"'']*fastapi\b(?!-)' }
+    group: python
+    emit: { framework: fastapi }
+    confidence: 0.9
+
+  - id: python-test-tooling
+    files: ["**/pyproject.toml", "**/requirements*.txt", "**/Pipfile", "**/setup.cfg"]
+    parser: regex
+    group: python
+    emit:
+      test_tooling: { regex: '(?im)^[\s"'']*(pytest|nose2|coverage)\b|\[tool\.(pytest)\b', pattern: '(pytest|nose2|coverage)' }
+    multi: [test_tooling]
+    confidence: 0.8
+
+  - id: python-tox
+    files: ["**/tox.ini"]
+    parser: filename
+    group: python
+    emit: { test_tooling: tox }
+    multi: [test_tooling]
+    confidence: 0.8
+
+  - id: python-version-file
+    files: ["**/.python-version"]
+    parser: regex
+    precedence: pin
+    applies_to: python
+    emit:
+      runtime_version: { regex: '^\s*(\d[\d.]*)' }
+    confidence: 0.95
+
+  - id: python-runtime-txt
+    files: ["**/runtime.txt"]
+    parser: regex
+    precedence: pin
+    applies_to: python
+    emit:
+      runtime_version: { regex: '^\s*python-(\d[\d.]*)' }
+    confidence: 0.95

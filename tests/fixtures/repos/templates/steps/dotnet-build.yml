@@ -1,0 +1,21 @@
+parameters:
+  - name: project
+    type: string
+  - name: configuration
+    type: string
+    default: Debug
+  - name: extraSteps
+    type: stepList
+    default: []
+
+steps:
+  - task: DotNetCoreCLI@2
+    displayName: Build ${{ parameters.project }}
+    inputs:
+      command: build
+      projects: ${{ parameters.project }}
+      arguments: -c ${{ parameters.configuration }}
+  - template: publish.yml
+    parameters:
+      project: ${{ parameters.project }}
+  - ${{ parameters.extraSteps }}
